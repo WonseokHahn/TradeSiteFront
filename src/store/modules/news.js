@@ -1,8 +1,6 @@
 import apiClient from '@/utils/api'
 import { useToast } from 'vue-toastification'
 
-const API_BASE_URL = process.env.VUE_APP_API_URL || '/api'
-
 const state = {
   articles: [],
   loading: false,
@@ -40,12 +38,10 @@ const actions = {
     commit('SET_SEARCH_KEYWORD', keyword)
     
     try {
-      // const response = await axios.get(`${API_BASE_URL}/news/search`, {
-      //   params: { keyword: keyword.trim() }
-      // })
       const response = await apiClient.get('/news/search', {
         params: { keyword: keyword.trim() }
       })
+      
       if (response.data.success) {
         commit('SET_ARTICLES', response.data.data)
         

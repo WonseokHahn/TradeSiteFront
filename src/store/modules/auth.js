@@ -1,4 +1,5 @@
 import axios from 'axios'
+import apiClient from '@/utils/api'
 import { useToast } from 'vue-toastification'
 
 const API_BASE_URL = process.env.VUE_APP_API_URL || '/api'
@@ -43,8 +44,9 @@ const actions = {
       // 토큰이 있으면 Authorization 헤더 설정
       axios.defaults.headers.common['Authorization'] = `Bearer ${state.token}`
       
-      const response = await axios.get(`${API_BASE_URL}/auth/profile`)
-      
+      // const response = await axios.get(`${API_BASE_URL}/auth/profile`)
+      const response = await apiClient.get('/auth/profile')
+
       if (response.data.success) {
         commit('SET_USER', response.data.user)
       } else {

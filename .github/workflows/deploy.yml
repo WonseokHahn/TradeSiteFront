@@ -27,7 +27,7 @@ jobs:
       run: |
         npm run build
       env:
-        VUE_APP_API_URL: https://tradesiteback.onrender.com/api
+        VUE_APP_API_URL: https://your-backend-name.onrender.com/api
         VUE_APP_ENVIRONMENT: production
         
     - name: Deploy to GitHub Pages
@@ -36,3 +36,5 @@ jobs:
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_dir: ./dist
+        wait_for_deployment: false
+

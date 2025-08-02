@@ -36,4 +36,3 @@ jobs:
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_dir: ./dist
-        cname: your-custom-domain.com  # 커스텀 도메인이 있는 경우만

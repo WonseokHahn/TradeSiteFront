@@ -7,10 +7,10 @@
       <div class="container">
         <div class="hero-content">
           <h1 class="hero-title">
-            AI 기반 주식 자동매매 플랫폼
+            AI 기반 놀이터
           </h1>
           <p class="hero-subtitle">
-            실시간 뉴스 분석과 AI 요약으로 스마트한 투자 결정을 내리세요
+            실시간 뉴스 분석과 AI 요약 주식 자동화
           </p>
           
           <!-- 검색 섹션 -->

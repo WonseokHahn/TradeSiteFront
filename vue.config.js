@@ -5,7 +5,7 @@ module.exports = defineConfig({
   
   // GitHub Pages용 설정
   publicPath: process.env.NODE_ENV === 'production' 
-    ? '/your-repository-name/' // GitHub 저장소 이름으로 변경
+    ? '/TradeSiteFront/' // GitHub 저장소 이름으로 변경
     : '/',
   
   // 개발 서버 설정
@@ -14,10 +14,10 @@ module.exports = defineConfig({
     proxy: {
       '/api': {
         target: process.env.NODE_ENV === 'production' 
-          ? 'https://your-backend-name.onrender.com'
+          ? 'https://tradesiteback.onrender.com'
           : 'http://localhost:3000',
         changeOrigin: true,
-        secure: true
+        secure: false
       }
     }
   },

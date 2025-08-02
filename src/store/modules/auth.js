@@ -1,8 +1,5 @@
-import axios from 'axios'
 import apiClient from '@/utils/api'
 import { useToast } from 'vue-toastification'
-
-const API_BASE_URL = process.env.VUE_APP_API_URL || '/api'
 
 const state = {
   user: null,
@@ -20,10 +17,9 @@ const mutations = {
     state.token = token
     if (token) {
       localStorage.setItem('token', token)
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
+      // apiClient는 이미 인터셉터에서 토큰을 자동으로 추가함
     } else {
       localStorage.removeItem('token')
-      delete axios.defaults.headers.common['Authorization']
     }
   },
   
@@ -32,7 +28,6 @@ const mutations = {
     state.token = null
     state.isAuthenticated = false
     localStorage.removeItem('token')
-    delete axios.defaults.headers.common['Authorization']
   }
 }
 
@@ -41,26 +36,26 @@ const actions = {
     try {
       if (!state.token) return
       
-      // 토큰이 있으면 Authorization 헤더 설정
-      axios.defaults.headers.common['Authorization'] = `Bearer ${state.token}`
-      
-      // const response = await axios.get(`${API_BASE_URL}/auth/profile`)
+      console.log('👤 사용자 프로필 로딩 중...')
       const response = await apiClient.get('/auth/profile')
-
+      
       if (response.data.success) {
         commit('SET_USER', response.data.user)
+        console.log('✅ 사용자 프로필 로드 성공:', response.data.user.email)
       } else {
         // 토큰이 유효하지 않은 경우
+        console.log('⚠️ 유효하지 않은 토큰 - 로그아웃 처리')
         commit('LOGOUT')
       }
     } catch (error) {
-      console.error('프로필 로드 실패:', error)
+      console.error('❌ 프로필 로드 실패:', error)
       commit('LOGOUT')
     }
   },
   
   async loginWithToken({ commit, dispatch }, token) {
     try {
+      console.log('🔑 토큰으로 로그인 처리 중...')
       commit('SET_TOKEN', token)
       await dispatch('loadUserProfile')
       
@@ -69,7 +64,7 @@ const actions = {
       
       return true
     } catch (error) {
-      console.error('토큰 로그인 실패:', error)
+      console.error('❌ 토큰 로그인 실패:', error)
       commit('LOGOUT')
       
       const toast = useToast()
@@ -81,9 +76,10 @@ const actions = {
   
   async logout({ commit }) {
     try {
-      await axios.post(`${API_BASE_URL}/auth/logout`)
+      console.log('👋 로그아웃 처리 중...')
+      await apiClient.post('/auth/logout')
     } catch (error) {
-      console.error('로그아웃 API 호출 실패:', error)
+      console.error('❌ 로그아웃 API 호출 실패:', error)
     } finally {
       commit('LOGOUT')
       
@@ -94,11 +90,13 @@ const actions = {
   
   // OAuth 로그인 URL 생성
   getGoogleLoginUrl() {
-    return `${API_BASE_URL}/auth/google`
+    const baseUrl = process.env.VUE_APP_API_URL?.replace('/api', '') || ''
+    return `${baseUrl}/api/auth/google`
   },
   
   getKakaoLoginUrl() {
-    return `${API_BASE_URL}/auth/kakao`
+    const baseUrl = process.env.VUE_APP_API_URL?.replace('/api', '') || ''
+    return `${baseUrl}/api/auth/kakao`
   }
 }
 

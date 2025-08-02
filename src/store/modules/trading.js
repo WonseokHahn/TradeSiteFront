@@ -1,7 +1,5 @@
-import axios from 'axios'
+import apiClient from '@/utils/api'
 import { useToast } from 'vue-toastification'
-
-const API_BASE_URL = process.env.VUE_APP_API_URL || '/api'
 
 const state = {
   strategies: [],
@@ -43,7 +41,7 @@ const actions = {
     commit('SET_LOADING', true)
     
     try {
-      const response = await axios.get(`${API_BASE_URL}/trading/strategies`)
+      const response = await apiClient.get('/trading/strategies')
       
       if (response.data.success) {
         commit('SET_STRATEGIES', response.data.data)
@@ -60,7 +58,7 @@ const actions = {
   
   async loadBestStrategy({ commit }) {
     try {
-      const response = await axios.get(`${API_BASE_URL}/trading/strategies/best`)
+      const response = await apiClient.get('/trading/strategies/best')
       
       if (response.data.success) {
         commit('SET_BEST_STRATEGY', response.data.data)
@@ -72,7 +70,7 @@ const actions = {
   
   async loadTradingStatus({ commit }) {
     try {
-      const response = await axios.get(`${API_BASE_URL}/trading/status`)
+      const response = await apiClient.get('/trading/status')
       
       if (response.data.success) {
         commit('SET_TRADING_STATUS', response.data.data)
@@ -86,7 +84,7 @@ const actions = {
     commit('SET_LOADING', true)
     
     try {
-      const response = await axios.post(`${API_BASE_URL}/trading/strategies`, strategyData)
+      const response = await apiClient.post('/trading/strategies', strategyData)
       
       if (response.data.success) {
         commit('ADD_STRATEGY', response.data.data)
@@ -113,7 +111,7 @@ const actions = {
     commit('SET_LOADING', true)
     
     try {
-      const response = await axios.post(`${API_BASE_URL}/trading/start`, {
+      const response = await apiClient.post('/trading/start', {
         strategyId
       })
       
@@ -141,7 +139,7 @@ const actions = {
     commit('SET_LOADING', true)
     
     try {
-      const response = await axios.post(`${API_BASE_URL}/trading/stop`)
+      const response = await apiClient.post('/trading/stop')
       
       if (response.data.success) {
         await dispatch('loadTradingStatus')

@@ -272,13 +272,12 @@ export default {
 .status-card {
   background-color: #ffffff;
   border-radius: 12px;
-  padding: 8px 16px; /* 직접 값으로 매우 작은 패딩 */
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 20px; /* 균등한 패딩 */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   display: flex;
   align-items: center;
-  gap: 12px; /* 작은 간격 */
+  gap: 16px;
   transition: transform 0.2s, box-shadow 0.2s;
-  height: 60px; /* 고정 높이로 설정 */
 }
 
 .status-card:hover {
@@ -287,28 +286,33 @@ export default {
 }
 
 .status-icon {
-  width: 32px; /* 작은 아이콘 크기 */
-  height: 32px;
-  border-radius: 6px;
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
 
+.status-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
 .status-icon.trading {
-  background-color: rgba(76, 175, 80, 0.1);
-  color: var(--success-color);
+  background-color: rgba(34, 197, 94, 0.1);
+  color: #22C55E;
 }
 
 .status-icon.strategy {
-  background-color: rgba(25, 118, 210, 0.1);
-  color: var(--primary-color);
+  background-color: rgba(59, 130, 246, 0.1);
+  color: #3B82F6;
 }
 
 .status-icon.allocation {
-  background-color: rgba(255, 152, 0, 0.1);
-  color: var(--warning-color);
+  background-color: rgba(249, 115, 22, 0.1);
+  color: #F97316;
 }
 
 .status-content {
@@ -316,27 +320,27 @@ export default {
 }
 
 .status-title {
-  font-size: 11px; /* 작은 제목 크기 */
-  font-weight: 500;
-  color: #666;
-  margin: 0 0 2px 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6B7280;
+  margin: 0 0 4px 0;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .status-value {
-  font-size: 16px; /* 적당한 값 크기 */
+  font-size: 18px;
   font-weight: 700;
   margin: 0;
-  color: #333;
+  color: #111827;
 }
 
 .status-value.active {
-  color: #4caf50; /* 초록색 */
+  color: #22C55E;
 }
 
 .status-value.inactive {
-  color: #999; /* 회색 */
+  color: #9CA3AF;
 }
 
 .strategy-section {
@@ -486,13 +490,17 @@ export default {
   }
   
   .status-card {
-    padding: 6px 12px; /* 모바일에서 더욱 작은 패딩 */
-    height: 50px; /* 모바일에서 더 작은 고정 높이 */
+    padding: 16px;
   }
   
   .status-icon {
-    width: 28px; /* 모바일에서 더 작은 아이콘 */
-    height: 28px;
+    width: 40px;
+    height: 40px;
+  }
+  
+  .status-icon svg {
+    width: 18px;
+    height: 18px;
   }
   
   .table-header,

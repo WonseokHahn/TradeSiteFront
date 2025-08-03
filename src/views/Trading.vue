@@ -272,12 +272,13 @@ export default {
 .status-card {
   background-color: var(--white);
   border-radius: var(--border-radius-lg);
-  padding: var(--spacing-xl);
+  padding: var(--spacing-lg) var(--spacing-xl); /* 상하 패딩을 줄임 */
   box-shadow: var(--shadow-sm);
   display: flex;
   align-items: center;
-  gap: var(--spacing-lg);
+  gap: var(--spacing-md); /* 간격도 줄임 */
   transition: transform var(--transition-normal), box-shadow var(--transition-normal);
+  min-height: 80px; /* 최소 높이 설정 */
 }
 
 .status-card:hover {
@@ -286,9 +287,9 @@ export default {
 }
 
 .status-icon {
-  width: 60px;
-  height: 60px;
-  border-radius: var(--border-radius-lg);
+  width: 48px; /* 아이콘 크기 줄임 */
+  height: 48px;
+  border-radius: var(--border-radius-md); /* 둥근 정도도 줄임 */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -324,7 +325,7 @@ export default {
 }
 
 .status-value {
-  font-size: var(--font-xl);
+  font-size: var(--font-lg); /* 폰트 크기도 살짝 줄임 */
   font-weight: var(--font-bold);
   margin: 0;
   color: var(--text-primary);
@@ -485,12 +486,13 @@ export default {
   }
   
   .status-card {
-    padding: var(--spacing-lg);
+    padding: var(--spacing-md) var(--spacing-lg); /* 모바일에서 더 작은 패딩 */
+    min-height: 70px; /* 모바일에서 더 작은 최소 높이 */
   }
   
   .status-icon {
-    width: 50px;
-    height: 50px;
+    width: 40px; /* 모바일에서 더 작은 아이콘 */
+    height: 40px;
   }
   
   .table-header,

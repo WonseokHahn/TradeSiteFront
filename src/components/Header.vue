@@ -264,7 +264,7 @@ export default {
 }
 
 /* 모바일 반응형 */
-@media (max-width: 768px) {
+/* @media (max-width: 768px) {
   .header-content {
     height: 60px;
   }
@@ -279,6 +279,52 @@ export default {
   
   .user-name {
     display: none;
+  }
+} */
+ /* 모바일 반응형 */
+@media (max-width: 768px) {
+  .header-content {
+    height: 60px;
+  }
+  
+  /* 네비게이션 숨김 규칙 제거 - 이제 모바일에서도 네비게이션이 보입니다 */
+  .header-nav {
+    gap: var(--spacing-md); /* 모바일에서는 간격을 좀 더 줄임 */
+  }
+  
+  .logo-text {
+    font-size: var(--font-lg);
+  }
+  
+  .user-name {
+    display: none;
+  }
+  
+  /* 모바일에서 네비게이션 링크 크기 조정 */
+  .nav-link {
+    font-size: var(--font-sm);
+  }
+  
+  /* 모바일에서 로그인 버튼 크기 조정 */
+  .custom-login-button {
+    padding: 8px 16px;
+    font-size: 14px;
+  }
+}
+
+/* 매우 작은 화면에서의 추가 조정 */
+@media (max-width: 480px) {
+  .header-nav {
+    gap: var(--spacing-sm);
+  }
+  
+  .nav-link {
+    font-size: 12px;
+  }
+  
+  .custom-login-button {
+    padding: 6px 12px;
+    font-size: 12px;
   }
 }
 </style>

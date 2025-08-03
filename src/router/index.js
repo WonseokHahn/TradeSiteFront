@@ -1,8 +1,12 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import store from '../store'
-import Home from '../views/Home.vue'
-import Login from '../views/Login.vue'
-import Trading from '../views/Trading.vue'
+
+// 동적 import를 사용하여 모든 컴포넌트 로드
+const Home = () => import('../views/Home.vue')
+const Login = () => import('../views/Login.vue')
+const Trading = () => import('../views/Trading.vue')
+const AuthCallback = () => import('../views/AuthCallback.vue')
+const NotFound = () => import('../views/NotFound.vue')
 
 const routes = [
   {
@@ -35,20 +39,24 @@ const routes = [
   {
     path: '/auth/callback',
     name: 'AuthCallback',
-    component: () => import('../views/AuthCallback.vue'),
+    component: AuthCallback,
     meta: { 
       title: '로그인 처리 중...',
       requiresAuth: false 
     }
   },
   {
-    path: '/:pathMatch(.*)*',
+    path: '/404',
     name: 'NotFound',
-    component: () => import('../views/NotFound.vue'),
+    component: NotFound,
     meta: { 
       title: '페이지를 찾을 수 없습니다',
       requiresAuth: false 
     }
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    redirect: '/404'
   }
 ]
 
@@ -59,6 +67,8 @@ const router = createRouter({
 
 // 라우터 가드
 router.beforeEach((to, from, next) => {
+  console.log('🔄 라우터 이동:', from.path, '→', to.path)
+  
   // 페이지 타이틀 설정
   document.title = to.meta.title || '주식 자동매매 사이트'
   
@@ -67,7 +77,7 @@ router.beforeEach((to, from, next) => {
     const isAuthenticated = store.getters['auth/isAuthenticated']
     
     if (!isAuthenticated) {
-      // 로그인 페이지로 리다이렉트하고 원래 가려던 페이지 정보 저장
+      console.log('🔒 인증 필요 - 로그인 페이지로 이동')
       next({
         name: 'Login',
         query: { redirect: to.fullPath }
@@ -78,6 +88,7 @@ router.beforeEach((to, from, next) => {
   
   // 이미 로그인한 사용자가 로그인 페이지에 접근하는 경우
   if (to.name === 'Login' && store.getters['auth/isAuthenticated']) {
+    console.log('✅ 이미 로그인됨 - 홈으로 이동')
     next({ name: 'Home' })
     return
   }

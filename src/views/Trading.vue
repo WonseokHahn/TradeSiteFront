@@ -270,15 +270,15 @@ export default {
 }
 
 .status-card {
-  background-color: var(--white);
-  border-radius: var(--border-radius-lg);
-  padding: var(--spacing-sm) var(--spacing-lg); /* 상하 패딩을 더 많이 줄임 */
-  box-shadow: var(--shadow-sm);
+  background-color: #ffffff;
+  border-radius: 12px;
+  padding: 8px 16px; /* 직접 값으로 매우 작은 패딩 */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm); /* 간격을 더 줄임 */
-  transition: transform var(--transition-normal), box-shadow var(--transition-normal);
-  min-height: 60px; /* 최소 높이를 더 줄임 */
+  gap: 12px; /* 작은 간격 */
+  transition: transform 0.2s, box-shadow 0.2s;
+  height: 60px; /* 고정 높이로 설정 */
 }
 
 .status-card:hover {
@@ -287,9 +287,9 @@ export default {
 }
 
 .status-icon {
-  width: 36px; /* 아이콘 크기를 더 많이 줄임 */
-  height: 36px;
-  border-radius: var(--border-radius-sm); /* 더 작은 둥근 정도 */
+  width: 32px; /* 작은 아이콘 크기 */
+  height: 32px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -316,27 +316,27 @@ export default {
 }
 
 .status-title {
-  font-size: var(--font-xs); /* 제목 폰트 크기 줄임 */
-  font-weight: var(--font-medium);
-  color: var(--text-secondary);
-  margin: 0 0 2px 0; /* 마진을 더 줄임 */
+  font-size: 11px; /* 작은 제목 크기 */
+  font-weight: 500;
+  color: #666;
+  margin: 0 0 2px 0;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .status-value {
-  font-size: var(--font-md); /* 값 폰트 크기를 더 줄임 */
-  font-weight: var(--font-bold);
+  font-size: 16px; /* 적당한 값 크기 */
+  font-weight: 700;
   margin: 0;
-  color: var(--text-primary);
+  color: #333;
 }
 
 .status-value.active {
-  color: var(--success-color);
+  color: #4caf50; /* 초록색 */
 }
 
 .status-value.inactive {
-  color: var(--gray);
+  color: #999; /* 회색 */
 }
 
 .strategy-section {
@@ -486,13 +486,13 @@ export default {
   }
   
   .status-card {
-    padding: var(--spacing-xs) var(--spacing-md); /* 모바일에서 더욱 작은 패딩 */
-    min-height: 50px; /* 모바일에서 더 작은 최소 높이 */
+    padding: 6px 12px; /* 모바일에서 더욱 작은 패딩 */
+    height: 50px; /* 모바일에서 더 작은 고정 높이 */
   }
   
   .status-icon {
-    width: 32px; /* 모바일에서 더 작은 아이콘 */
-    height: 32px;
+    width: 28px; /* 모바일에서 더 작은 아이콘 */
+    height: 28px;
   }
   
   .table-header,

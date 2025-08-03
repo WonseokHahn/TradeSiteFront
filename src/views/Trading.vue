@@ -272,13 +272,13 @@ export default {
 .status-card {
   background-color: var(--white);
   border-radius: var(--border-radius-lg);
-  padding: var(--spacing-lg) var(--spacing-xl); /* 상하 패딩을 줄임 */
+  padding: var(--spacing-sm) var(--spacing-lg); /* 상하 패딩을 더 많이 줄임 */
   box-shadow: var(--shadow-sm);
   display: flex;
   align-items: center;
-  gap: var(--spacing-md); /* 간격도 줄임 */
+  gap: var(--spacing-sm); /* 간격을 더 줄임 */
   transition: transform var(--transition-normal), box-shadow var(--transition-normal);
-  min-height: 80px; /* 최소 높이 설정 */
+  min-height: 60px; /* 최소 높이를 더 줄임 */
 }
 
 .status-card:hover {
@@ -287,9 +287,9 @@ export default {
 }
 
 .status-icon {
-  width: 48px; /* 아이콘 크기 줄임 */
-  height: 48px;
-  border-radius: var(--border-radius-md); /* 둥근 정도도 줄임 */
+  width: 36px; /* 아이콘 크기를 더 많이 줄임 */
+  height: 36px;
+  border-radius: var(--border-radius-sm); /* 더 작은 둥근 정도 */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -316,16 +316,16 @@ export default {
 }
 
 .status-title {
-  font-size: var(--font-sm);
+  font-size: var(--font-xs); /* 제목 폰트 크기 줄임 */
   font-weight: var(--font-medium);
   color: var(--text-secondary);
-  margin: 0 0 var(--spacing-xs) 0;
+  margin: 0 0 2px 0; /* 마진을 더 줄임 */
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .status-value {
-  font-size: var(--font-lg); /* 폰트 크기도 살짝 줄임 */
+  font-size: var(--font-md); /* 값 폰트 크기를 더 줄임 */
   font-weight: var(--font-bold);
   margin: 0;
   color: var(--text-primary);
@@ -486,13 +486,13 @@ export default {
   }
   
   .status-card {
-    padding: var(--spacing-md) var(--spacing-lg); /* 모바일에서 더 작은 패딩 */
-    min-height: 70px; /* 모바일에서 더 작은 최소 높이 */
+    padding: var(--spacing-xs) var(--spacing-md); /* 모바일에서 더욱 작은 패딩 */
+    min-height: 50px; /* 모바일에서 더 작은 최소 높이 */
   }
   
   .status-icon {
-    width: 40px; /* 모바일에서 더 작은 아이콘 */
-    height: 40px;
+    width: 32px; /* 모바일에서 더 작은 아이콘 */
+    height: 32px;
   }
   
   .table-header,

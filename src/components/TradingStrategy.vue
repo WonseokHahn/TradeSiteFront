@@ -50,6 +50,7 @@
                 v-model="strategy.region" 
                 value="domestic"
                 class="region-radio"
+                @change="onRegionChange"
               >
               <div class="region-card">
                 <span class="region-flag">🇰🇷</span>
@@ -63,6 +64,7 @@
                 v-model="strategy.region" 
                 value="global"
                 class="region-radio"
+                @change="onRegionChange"
               >
               <div class="region-card">
                 <span class="region-flag">🌍</span>
@@ -72,36 +74,29 @@
           </div>
         </div>
 
-        <!-- 추천 전략 표시 -->
-        <div v-if="bestStrategy" class="best-strategy">
-          <div class="strategy-header">
-            <span class="strategy-badge">AI 추천 전략</span>
-            <span class="strategy-performance">
-              예상 수익률: {{ bestStrategy.expectedReturn }}%
-            </span>
-          </div>
-          <div class="strategy-info">
-            <p><strong>{{ bestStrategy.name }}</strong></p>
-            <p>{{ bestStrategy.description }}</p>
-            <div class="recommended-stocks">
-              <h4>추천 종목 구성</h4>
-              <div class="stock-chips">
-                <span 
-                  v-for="stock in bestStrategy.stocks" 
-                  :key="stock.code"
-                  class="stock-chip"
-                >
-                  {{ stock.name }} ({{ stock.allocation }}%)
-                </span>
+        <!-- 잔고 정보 표시 -->
+        <div class="form-group">
+          <label class="form-label">투자 가능 금액</label>
+          <div class="balance-info">
+            <div v-if="balanceLoading" class="balance-loading">
+              <div class="loading-spinner"></div>
+              <span>잔고 조회 중...</span>
+            </div>
+            <div v-else-if="accountBalance" class="balance-display">
+              <div class="balance-item">
+                <span class="balance-label">총 예수금:</span>
+                <span class="balance-value">{{ formatCurrency(accountBalance.totalDeposit, strategy.region) }}</span>
+              </div>
+              <div class="balance-item">
+                <span class="balance-label">주문 가능 금액:</span>
+                <span class="balance-value available">{{ formatCurrency(accountBalance.availableAmount, strategy.region) }}</span>
               </div>
             </div>
+            <div v-else class="balance-error">
+              <span>잔고 정보를 불러올 수 없습니다.</span>
+              <button @click="loadAccountBalance" class="btn btn-sm btn-outline">다시 시도</button>
+            </div>
           </div>
-          <button 
-            @click="applyBestStrategy"
-            class="btn btn-sm btn-outline"
-          >
-            이 전략 적용
-          </button>
         </div>
 
         <!-- 종목 구성 설정 -->
@@ -120,6 +115,7 @@
                   :placeholder="strategy.region === 'domestic' ? '종목코드 (예: 005930)' : '티커 (예: AAPL)'"
                   class="form-input stock-code"
                   @blur="validateStockCode(index)"
+                  :disabled="stock.validating"
                 >
                 <input 
                   type="text" 
@@ -149,8 +145,15 @@
                   ×
                 </button>
               </div>
+              <div v-if="stock.validating" class="validation-loading">
+                <div class="loading-spinner"></div>
+                <span>종목 정보 확인 중...</span>
+              </div>
               <div v-if="stock.error" class="form-error">
                 {{ stock.error }}
+              </div>
+              <div v-if="stock.price" class="stock-price">
+                현재가: {{ formatCurrency(stock.price, strategy.region) }}
               </div>
             </div>
             
@@ -163,11 +166,14 @@
             </button>
             
             <div class="allocation-summary">
-              <span class="total-allocation" :class="{ 'invalid': totalAllocation !== 100 }">
+              <span class="total-allocation" :class="{ 'over-100': totalAllocation > 100 }">
                 총 투자 비율: {{ totalAllocation }}%
               </span>
-              <span v-if="totalAllocation !== 100" class="allocation-warning">
-                (총 100%가 되어야 합니다)
+              <span v-if="totalAllocation > 100" class="allocation-warning">
+                (100%를 초과했습니다)
+              </span>
+              <span v-if="totalAllocation < 100" class="allocation-info">
+                (남은 비율: {{ 100 - totalAllocation }}%)
               </span>
             </div>
           </div>
@@ -216,6 +222,7 @@
 
 <script>
 import { mapGetters, mapActions } from 'vuex'
+import apiClient from '@/utils/api'
 
 export default {
   name: 'TradingStrategy',
@@ -225,14 +232,16 @@ export default {
         marketType: 'bull',
         region: 'domestic',
         stocks: [
-          { code: '', name: '', allocation: 100, error: null }
+          { code: '', name: '', allocation: 50, error: null, validating: false, price: null }
         ]
       },
-      totalAllocation: 100
+      totalAllocation: 50,
+      accountBalance: null,
+      balanceLoading: false
     }
   },
   computed: {
-    ...mapGetters('trading', ['bestStrategy', 'isTrading', 'isLoading', 'currentStrategy']),
+    ...mapGetters('trading', ['isTrading', 'isLoading', 'currentStrategy']),
     
     loading() {
       return this.isLoading
@@ -242,13 +251,14 @@ export default {
       return this.strategy.marketType && 
              this.strategy.region &&
              this.strategy.stocks.every(stock => stock.code && stock.allocation > 0) &&
-             this.totalAllocation === 100 &&
-             !this.strategy.stocks.some(stock => stock.error)
+             this.totalAllocation > 0 &&
+             this.totalAllocation <= 100 &&
+             !this.strategy.stocks.some(stock => stock.error || stock.validating)
     }
   },
   async created() {
-    await this.loadBestStrategy()
     await this.loadTradingStatus()
+    await this.loadAccountBalance()
     
     // 현재 활성 전략이 있으면 폼에 로드
     if (this.currentStrategy) {
@@ -257,7 +267,6 @@ export default {
   },
   methods: {
     ...mapActions('trading', [
-      'loadBestStrategy', 
       'loadTradingStatus', 
       'createStrategy',
       'startTrading as startTradingAction',
@@ -269,25 +278,38 @@ export default {
         this.strategy = {
           marketType: this.currentStrategy.marketType,
           region: this.currentStrategy.region,
-          stocks: this.currentStrategy.stocks || [{ code: '', name: '', allocation: 100, error: null }]
+          stocks: this.currentStrategy.stocks || [{ code: '', name: '', allocation: 50, error: null, validating: false, price: null }]
         }
         this.updateTotalAllocation()
       }
     },
-    
-    applyBestStrategy() {
-      if (this.bestStrategy) {
-        this.strategy = {
-          marketType: this.bestStrategy.marketType,
-          region: this.bestStrategy.region,
-          stocks: this.bestStrategy.stocks.map(stock => ({
-            code: stock.code,
-            name: stock.name,
-            allocation: stock.allocation,
-            error: null
-          }))
+
+    onRegionChange() {
+      // 지역 변경시 잔고 다시 조회 및 종목 정보 초기화
+      this.loadAccountBalance()
+      this.strategy.stocks.forEach(stock => {
+        stock.name = ''
+        stock.error = null
+        stock.price = null
+      })
+    },
+
+    async loadAccountBalance() {
+      this.balanceLoading = true
+      try {
+        const endpoint = this.strategy.region === 'domestic' 
+          ? '/trading/account/balance/domestic'
+          : '/trading/account/balance/global'
+        
+        const response = await apiClient.get(endpoint)
+        if (response.data.success) {
+          this.accountBalance = response.data.data
         }
-        this.updateTotalAllocation()
+      } catch (error) {
+        console.error('잔고 조회 실패:', error)
+        this.accountBalance = null
+      } finally {
+        this.balanceLoading = false
       }
     },
     
@@ -297,7 +319,9 @@ export default {
           code: '', 
           name: '', 
           allocation: 0, 
-          error: null 
+          error: null, 
+          validating: false,
+          price: null
         })
       }
     },
@@ -318,62 +342,64 @@ export default {
       if (!stock.code) {
         stock.error = null
         stock.name = ''
+        stock.price = null
         return
       }
       
+      stock.validating = true
+      stock.error = null
+      
       try {
-        // 종목 코드 유효성 검사 및 종목명 조회
+        let endpoint, validationResponse
+        
         if (this.strategy.region === 'domestic') {
           // 국내 주식 코드 검증 (6자리 숫자)
           if (!/^\d{6}$/.test(stock.code)) {
             stock.error = '올바른 종목 코드를 입력해주세요 (6자리 숫자)'
             stock.name = ''
+            stock.price = null
             return
           }
           
-          // 실제로는 API를 호출하여 종목명을 조회해야 함
-          const stockNames = {
-            '005930': '삼성전자',
-            '000660': 'SK하이닉스',  
-            '035420': 'NAVER',
-            '051910': 'LG화학',
-            '006400': '삼성SDI',
-            '035720': '카카오',
-            '207940': '삼성바이오로직스',
-            '373220': 'LG에너지솔루션',
-            '000270': '기아',
-            '068270': '셀트리온'
-          }
+          endpoint = '/trading/stock/info/domestic'
+          validationResponse = await apiClient.get(endpoint, {
+            params: { stockCode: stock.code }
+          })
           
-          stock.name = stockNames[stock.code] || '알 수 없는 종목'
-          stock.error = null
         } else {
           // 해외 주식 티커 검증
           if (!/^[A-Z]{1,5}$/.test(stock.code.toUpperCase())) {
-            stock.error = '올바른 티커를 입력해주세요'
+            stock.error = '올바른 티커를 입력해주세요 (1-5자리 영문)'
             stock.name = ''
+            stock.price = null
             return
           }
           
-          // 해외 주식 예시
-          const globalStockNames = {
-            'AAPL': 'Apple Inc.',
-            'MSFT': 'Microsoft Corp.',
-            'GOOGL': 'Alphabet Inc.',
-            'AMZN': 'Amazon.com Inc.',
-            'TSLA': 'Tesla Inc.',
-            'META': 'Meta Platforms Inc.',
-            'NVDA': 'NVIDIA Corp.',
-            'NFLX': 'Netflix Inc.'
-          }
-          
           stock.code = stock.code.toUpperCase()
-          stock.name = globalStockNames[stock.code] || '알 수 없는 종목'
-          stock.error = null
+          endpoint = '/trading/stock/info/global'
+          validationResponse = await apiClient.get(endpoint, {
+            params: { ticker: stock.code }
+          })
         }
+        
+        if (validationResponse.data.success) {
+          const stockInfo = validationResponse.data.data
+          stock.name = stockInfo.name
+          stock.price = stockInfo.price
+          stock.error = null
+        } else {
+          stock.error = validationResponse.data.message || '종목 정보를 찾을 수 없습니다'
+          stock.name = ''
+          stock.price = null
+        }
+        
       } catch (error) {
+        console.error('종목 검증 오류:', error)
         stock.error = '종목 정보를 가져올 수 없습니다'
         stock.name = ''
+        stock.price = null
+      } finally {
+        stock.validating = false
       }
     },
     
@@ -397,6 +423,22 @@ export default {
         await this.stopTradingAction()
       } catch (error) {
         console.error('자동매매 중단 오류:', error)
+      }
+    },
+
+    formatCurrency(amount, region) {
+      if (!amount) return '-'
+      
+      const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount
+      if (isNaN(numAmount)) return '-'
+      
+      if (region === 'domestic') {
+        return numAmount.toLocaleString() + '원'
+      } else {
+        return '$' + numAmount.toLocaleString(undefined, {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        })
       }
     }
   }
@@ -494,59 +536,46 @@ export default {
   font-size: 1.2rem;
 }
 
-.best-strategy {
-  background: linear-gradient(135deg, rgba(25, 118, 210, 0.1), rgba(25, 118, 210, 0.05));
-  border: 1px solid rgba(25, 118, 210, 0.2);
-  border-radius: var(--border-radius-lg);
-  padding: var(--spacing-lg);
-  margin: var(--spacing-lg) 0;
+.balance-info {
+  background-color: var(--bg-secondary);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-md);
+  margin-top: var(--spacing-sm);
 }
 
-.strategy-header {
+.balance-loading,
+.balance-error {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--spacing-md);
-}
-
-.strategy-badge {
-  background-color: var(--primary-color);
-  color: var(--white);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--border-radius-xl);
-  font-size: var(--font-xs);
-  font-weight: var(--font-medium);
-  text-transform: uppercase;
-}
-
-.strategy-performance {
-  font-weight: var(--font-medium);
-  color: var(--success-color);
-}
-
-.recommended-stocks {
-  margin-top: var(--spacing-md);
-}
-
-.recommended-stocks h4 {
-  font-size: var(--font-sm);
-  margin-bottom: var(--spacing-sm);
+  gap: var(--spacing-sm);
   color: var(--text-secondary);
 }
 
-.stock-chips {
+.balance-display {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: var(--spacing-xs);
 }
 
-.stock-chip {
-  background-color: rgba(25, 118, 210, 0.1);
-  color: var(--primary-color);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--border-radius-sm);
-  font-size: var(--font-xs);
+.balance-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.balance-label {
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+}
+
+.balance-value {
   font-weight: var(--font-medium);
+  color: var(--text-primary);
+}
+
+.balance-value.available {
+  color: var(--success-color);
+  font-weight: var(--font-bold);
 }
 
 .stocks-container {
@@ -598,6 +627,22 @@ export default {
   line-height: 1;
 }
 
+.validation-loading {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-xs);
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+}
+
+.stock-price {
+  margin-top: var(--spacing-xs);
+  font-size: var(--font-sm);
+  color: var(--success-color);
+  font-weight: var(--font-medium);
+}
+
 .add-stock-btn {
   width: 100%;
   margin-bottom: var(--spacing-md);
@@ -615,13 +660,19 @@ export default {
   color: var(--success-color);
 }
 
-.total-allocation.invalid {
+.total-allocation.over-100 {
   color: var(--error-color);
 }
 
 .allocation-warning {
   font-size: var(--font-sm);
   color: var(--error-color);
+  margin-left: var(--spacing-sm);
+}
+
+.allocation-info {
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
   margin-left: var(--spacing-sm);
 }
 
@@ -671,6 +722,19 @@ export default {
   gap: var(--spacing-sm);
 }
 
+.loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border-light);
+  border-radius: 50%;
+  border-top-color: var(--primary-color);
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 /* 모바일 반응형 */
 @media (max-width: 768px) {
   .market-options,
@@ -678,10 +742,10 @@ export default {
     grid-template-columns: 1fr;
   }
   
-  .strategy-header {
+  .balance-item {
     flex-direction: column;
     align-items: flex-start;
-    gap: var(--spacing-sm);
+    gap: var(--spacing-xs);
   }
   
   .stock-inputs {

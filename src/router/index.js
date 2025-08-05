@@ -1,12 +1,12 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import store from '../store'
 
-// 동적 import를 사용하여 모든 컴포넌트 로드
-const Home = () => import('../views/Home.vue')
-const Login = () => import('../views/Login.vue')
-const Trading = () => import('../views/Trading.vue')
-const AuthCallback = () => import('../views/AuthCallback.vue')
-const NotFound = () => import('../views/NotFound.vue')
+// 동적 import 대신 정적 import 사용 (GitHub Pages 호환)
+import Home from '../views/Home.vue'
+import Login from '../views/Login.vue'
+import Trading from '../views/Trading.vue'
+import AuthCallback from '../views/AuthCallback.vue'
+import NotFound from '../views/NotFound.vue'
 
 const routes = [
   {

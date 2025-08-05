@@ -3,7 +3,7 @@ import axios from 'axios'
 // API 베이스 URL 설정
 const API_BASE_URL = process.env.VUE_APP_API_URL || '/api'
 
-console.log('🌐 API Base URL:', API_BASE_URL)
+// console.log('🌐 API Base URL:', API_BASE_URL)
 
 // Axios 인스턴스 생성
 const apiClient = axios.create({

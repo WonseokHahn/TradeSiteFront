@@ -29,8 +29,8 @@ export default {
   },
   async mounted() {
     console.log('🎬 AuthCallback 컴포넌트 마운트됨')
-    console.log('🌐 현재 URL:', window.location.href)
-    console.log('📍 라우트 정보:', this.$route)
+    // console.log('🌐 현재 URL:', window.location.href)
+    // console.log('📍 라우트 정보:', this.$route)
     
     await this.handleAuthCallback()
   },
@@ -53,11 +53,11 @@ export default {
           urlParams: Object.fromEntries(params),
           token: token ? token.substring(0, 20) + '...' : 'null',
           provider,
-          name: name ? decodeURIComponent(name) : 'null',
+          name: name === '미연동 계정' ? '한원석' : (name ? decodeURIComponent(name) : 'null'),
           error
         }
         
-        console.log('🔍 추출된 파라미터:', this.debugInfo)
+        // console.log('🔍 추출된 파라미터:', this.debugInfo)
         
         // 에러가 있는 경우
         if (error) {
@@ -70,7 +70,7 @@ export default {
           throw new Error('토큰이 없습니다. URL 파라미터를 확인해주세요.')
         }
         
-        console.log('🎫 토큰 발견:', token.substring(0, 30) + '...')
+        // console.log('🎫 토큰 발견:', token.substring(0, 30) + '...')
         console.log('🔐 OAuth 제공자:', provider)
         console.log('👤 사용자 이름:', decodeURIComponent(name || ''))
         

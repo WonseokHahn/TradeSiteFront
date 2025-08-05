@@ -80,7 +80,7 @@ const actions = {
     }
   },
   
-  async createStrategy({ commit, dispatch }, strategyData) {
+  async createStrategy({ commit }, strategyData) {
     commit('SET_LOADING', true)
     
     try {

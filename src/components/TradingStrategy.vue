@@ -19,8 +19,8 @@
               >
               <div class="market-card bull">
                 <div class="market-icon">📈</div>
-                <div class="market-label">상승장</div>
-                <div class="market-desc">적극적 매수 전략</div>
+                <div class="market-label">상승장 전략</div>
+                <div class="market-desc">모멘텀 + 성장주 중심</div>
               </div>
             </label>
             
@@ -33,25 +33,68 @@
               >
               <div class="market-card bear">
                 <div class="market-icon">📉</div>
-                <div class="market-label">하락장</div>
-                <div class="market-desc">보수적 매수 전략</div>
+                <div class="market-label">하락장 전략</div>
+                <div class="market-desc">가치주 + 배당주 중심</div>
               </div>
             </label>
           </div>
         </div>
 
-        <!-- 최적 전략 표시 -->
+        <!-- 투자 지역 선택 -->
+        <div class="form-group">
+          <label class="form-label">투자 지역</label>
+          <div class="region-options">
+            <label class="region-option">
+              <input 
+                type="radio" 
+                v-model="strategy.region" 
+                value="domestic"
+                class="region-radio"
+              >
+              <div class="region-card">
+                <span class="region-flag">🇰🇷</span>
+                <span class="region-text">국내 투자</span>
+              </div>
+            </label>
+            
+            <label class="region-option">
+              <input 
+                type="radio" 
+                v-model="strategy.region" 
+                value="global"
+                class="region-radio"
+              >
+              <div class="region-card">
+                <span class="region-flag">🌍</span>
+                <span class="region-text">해외 투자</span>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- 추천 전략 표시 -->
         <div v-if="bestStrategy" class="best-strategy">
           <div class="strategy-header">
-            <span class="strategy-badge">추천 전략</span>
+            <span class="strategy-badge">AI 추천 전략</span>
             <span class="strategy-performance">
               예상 수익률: {{ bestStrategy.expectedReturn }}%
             </span>
           </div>
           <div class="strategy-info">
-            <p><strong>{{ bestStrategy.stockName }}</strong> ({{ bestStrategy.stockCode }})</p>
-            <p>추천 비율: {{ bestStrategy.allocation }}%</p>
-            <p>위험 수준: {{ getRiskLevelText(bestStrategy.riskLevel) }}</p>
+            <p><strong>{{ bestStrategy.name }}</strong></p>
+            <p>{{ bestStrategy.description }}</p>
+            <div class="recommended-stocks">
+              <h4>추천 종목 구성</h4>
+              <div class="stock-chips">
+                <span 
+                  v-for="stock in bestStrategy.stocks" 
+                  :key="stock.code"
+                  class="stock-chip"
+                >
+                  {{ stock.name }} ({{ stock.allocation }}%)
+                </span>
+              </div>
+            </div>
           </div>
           <button 
             @click="applyBestStrategy"
@@ -61,42 +104,72 @@
           </button>
         </div>
 
-        <!-- 종목 및 비율 설정 -->
+        <!-- 종목 구성 설정 -->
         <div class="form-group">
-          <label class="form-label">종목 코드</label>
-          <input 
-            type="text" 
-            v-model="strategy.stockCode"
-            placeholder="예: 005930 (삼성전자)"
-            class="form-input"
-            @input="validateStockCode"
-          >
-          <div v-if="stockCodeError" class="form-error">
-            {{ stockCodeError }}
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">투자 비율 (%)</label>
-          <div class="allocation-input">
-            <input 
-              type="range" 
-              v-model="strategy.allocation"
-              min="1"
-              max="100"
-              class="allocation-slider"
+          <label class="form-label">종목 구성</label>
+          <div class="stocks-container">
+            <div 
+              v-for="(stock, index) in strategy.stocks" 
+              :key="index"
+              class="stock-item"
             >
-            <input 
-              type="number" 
-              v-model="strategy.allocation"
-              min="1"
-              max="100"
-              class="allocation-number"
+              <div class="stock-inputs">
+                <input 
+                  type="text" 
+                  v-model="stock.code"
+                  :placeholder="strategy.region === 'domestic' ? '종목코드 (예: 005930)' : '티커 (예: AAPL)'"
+                  class="form-input stock-code"
+                  @blur="validateStockCode(index)"
+                >
+                <input 
+                  type="text" 
+                  v-model="stock.name"
+                  placeholder="종목명"
+                  class="form-input stock-name"
+                  readonly
+                >
+                <div class="allocation-input-group">
+                  <input 
+                    type="number" 
+                    v-model="stock.allocation"
+                    min="1"
+                    max="100"
+                    placeholder="비율"
+                    class="form-input allocation-input"
+                    @input="updateTotalAllocation"
+                  >
+                  <span class="allocation-unit">%</span>
+                </div>
+                <button 
+                  v-if="strategy.stocks.length > 1"
+                  @click="removeStock(index)"
+                  class="btn-remove"
+                  type="button"
+                >
+                  ×
+                </button>
+              </div>
+              <div v-if="stock.error" class="form-error">
+                {{ stock.error }}
+              </div>
+            </div>
+            
+            <button 
+              @click="addStock"
+              class="btn btn-outline btn-sm add-stock-btn"
+              type="button"
             >
-            <span class="allocation-unit">%</span>
-          </div>
-          <div class="allocation-display">
-            현재 설정: {{ strategy.allocation }}%
+              + 종목 추가
+            </button>
+            
+            <div class="allocation-summary">
+              <span class="total-allocation" :class="{ 'invalid': totalAllocation !== 100 }">
+                총 투자 비율: {{ totalAllocation }}%
+              </span>
+              <span v-if="totalAllocation !== 100" class="allocation-warning">
+                (총 100%가 되어야 합니다)
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -150,10 +223,12 @@ export default {
     return {
       strategy: {
         marketType: 'bull',
-        stockCode: '',
-        allocation: 30
+        region: 'domestic',
+        stocks: [
+          { code: '', name: '', allocation: 100, error: null }
+        ]
       },
-      stockCodeError: null
+      totalAllocation: 100
     }
   },
   computed: {
@@ -165,10 +240,10 @@ export default {
     
     isValidStrategy() {
       return this.strategy.marketType && 
-             this.strategy.stockCode && 
-             this.strategy.allocation > 0 && 
-             this.strategy.allocation <= 100 &&
-             !this.stockCodeError
+             this.strategy.region &&
+             this.strategy.stocks.every(stock => stock.code && stock.allocation > 0) &&
+             this.totalAllocation === 100 &&
+             !this.strategy.stocks.some(stock => stock.error)
     }
   },
   async created() {
@@ -177,11 +252,7 @@ export default {
     
     // 현재 활성 전략이 있으면 폼에 로드
     if (this.currentStrategy) {
-      this.strategy = {
-        marketType: this.currentStrategy.marketType,
-        stockCode: this.currentStrategy.stockCode,
-        allocation: this.currentStrategy.allocation
-      }
+      this.loadCurrentStrategy()
     }
   },
   methods: {
@@ -193,42 +264,124 @@ export default {
       'stopTrading as stopTradingAction'
     ]),
     
+    loadCurrentStrategy() {
+      if (this.currentStrategy) {
+        this.strategy = {
+          marketType: this.currentStrategy.marketType,
+          region: this.currentStrategy.region,
+          stocks: this.currentStrategy.stocks || [{ code: '', name: '', allocation: 100, error: null }]
+        }
+        this.updateTotalAllocation()
+      }
+    },
+    
     applyBestStrategy() {
       if (this.bestStrategy) {
         this.strategy = {
           marketType: this.bestStrategy.marketType,
-          stockCode: this.bestStrategy.stockCode,
-          allocation: this.bestStrategy.allocation
+          region: this.bestStrategy.region,
+          stocks: this.bestStrategy.stocks.map(stock => ({
+            code: stock.code,
+            name: stock.name,
+            allocation: stock.allocation,
+            error: null
+          }))
         }
-        this.stockCodeError = null
+        this.updateTotalAllocation()
       }
     },
     
-    validateStockCode() {
-      const code = this.strategy.stockCode.trim()
-      
-      if (!code) {
-        this.stockCodeError = null
+    addStock() {
+      if (this.strategy.stocks.length < 10) { // 최대 10개 종목
+        this.strategy.stocks.push({ 
+          code: '', 
+          name: '', 
+          allocation: 0, 
+          error: null 
+        })
+      }
+    },
+    
+    removeStock(index) {
+      this.strategy.stocks.splice(index, 1)
+      this.updateTotalAllocation()
+    },
+    
+    updateTotalAllocation() {
+      this.totalAllocation = this.strategy.stocks.reduce((sum, stock) => {
+        return sum + (parseInt(stock.allocation) || 0)
+      }, 0)
+    },
+    
+    async validateStockCode(index) {
+      const stock = this.strategy.stocks[index]
+      if (!stock.code) {
+        stock.error = null
+        stock.name = ''
         return
       }
       
-      // 한국 주식 코드 형식 검증 (6자리 숫자)
-      const stockCodePattern = /^\d{6}$/
-      
-      if (!stockCodePattern.test(code)) {
-        this.stockCodeError = '올바른 종목 코드를 입력해주세요 (6자리 숫자)'
-      } else {
-        this.stockCodeError = null
+      try {
+        // 종목 코드 유효성 검사 및 종목명 조회
+        if (this.strategy.region === 'domestic') {
+          // 국내 주식 코드 검증 (6자리 숫자)
+          if (!/^\d{6}$/.test(stock.code)) {
+            stock.error = '올바른 종목 코드를 입력해주세요 (6자리 숫자)'
+            stock.name = ''
+            return
+          }
+          
+          // 실제로는 API를 호출하여 종목명을 조회해야 함
+          const stockNames = {
+            '005930': '삼성전자',
+            '000660': 'SK하이닉스',  
+            '035420': 'NAVER',
+            '051910': 'LG화학',
+            '006400': '삼성SDI',
+            '035720': '카카오',
+            '207940': '삼성바이오로직스',
+            '373220': 'LG에너지솔루션',
+            '000270': '기아',
+            '068270': '셀트리온'
+          }
+          
+          stock.name = stockNames[stock.code] || '알 수 없는 종목'
+          stock.error = null
+        } else {
+          // 해외 주식 티커 검증
+          if (!/^[A-Z]{1,5}$/.test(stock.code.toUpperCase())) {
+            stock.error = '올바른 티커를 입력해주세요'
+            stock.name = ''
+            return
+          }
+          
+          // 해외 주식 예시
+          const globalStockNames = {
+            'AAPL': 'Apple Inc.',
+            'MSFT': 'Microsoft Corp.',
+            'GOOGL': 'Alphabet Inc.',
+            'AMZN': 'Amazon.com Inc.',
+            'TSLA': 'Tesla Inc.',
+            'META': 'Meta Platforms Inc.',
+            'NVDA': 'NVIDIA Corp.',
+            'NFLX': 'Netflix Inc.'
+          }
+          
+          stock.code = stock.code.toUpperCase()
+          stock.name = globalStockNames[stock.code] || '알 수 없는 종목'
+          stock.error = null
+        }
+      } catch (error) {
+        stock.error = '종목 정보를 가져올 수 없습니다'
+        stock.name = ''
       }
     },
     
     async startTrading() {
       try {
-        // 전략 생성
         const success = await this.createStrategy(this.strategy)
         
         if (success) {
-          // 생성된 전략으로 자동매매 시작
           const latestStrategy = this.currentStrategy
           if (latestStrategy) {
             await this.startTradingAction(latestStrategy.id)
@@ -245,15 +398,6 @@ export default {
       } catch (error) {
         console.error('자동매매 중단 오류:', error)
       }
-    },
-    
-    getRiskLevelText(level) {
-      const levels = {
-        'Low': '낮음',
-        'Medium': '보통',
-        'High': '높음'
-      }
-      return levels[level] || level
     }
   }
 }
@@ -261,7 +405,7 @@ export default {
 
 <style scoped>
 .strategy-form {
-  max-width: 800px;
+  max-width: 900px;
   margin: 0 auto;
 }
 
@@ -311,21 +455,43 @@ export default {
   background-color: rgba(244, 67, 54, 0.05);
 }
 
-.market-icon {
-  font-size: 2rem;
-  margin-bottom: var(--spacing-sm);
+.region-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-sm);
 }
 
-.market-label {
-  font-weight: var(--font-medium);
-  font-size: var(--font-lg);
-  margin-bottom: var(--spacing-xs);
-  color: var(--text-primary);
+.region-option {
+  cursor: pointer;
 }
 
-.market-desc {
-  font-size: var(--font-sm);
-  color: var(--text-secondary);
+.region-radio {
+  display: none;
+}
+
+.region-card {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  border: 2px solid var(--border-light);
+  border-radius: var(--border-radius-md);
+  transition: all var(--transition-fast);
+  background-color: var(--white);
+}
+
+.region-card:hover {
+  border-color: var(--primary-color);
+}
+
+.region-radio:checked + .region-card {
+  border-color: var(--primary-color);
+  background-color: rgba(25, 118, 210, 0.05);
+}
+
+.region-flag {
+  font-size: 1.2rem;
 }
 
 .best-strategy {
@@ -358,57 +524,58 @@ export default {
   color: var(--success-color);
 }
 
-.strategy-info {
+.recommended-stocks {
+  margin-top: var(--spacing-md);
+}
+
+.recommended-stocks h4 {
+  font-size: var(--font-sm);
+  margin-bottom: var(--spacing-sm);
+  color: var(--text-secondary);
+}
+
+.stock-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+}
+
+.stock-chip {
+  background-color: rgba(25, 118, 210, 0.1);
+  color: var(--primary-color);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--border-radius-sm);
+  font-size: var(--font-xs);
+  font-weight: var(--font-medium);
+}
+
+.stocks-container {
+  border: 1px solid var(--border-light);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-md);
+  background-color: var(--bg-secondary);
+}
+
+.stock-item {
   margin-bottom: var(--spacing-md);
 }
 
-.strategy-info p {
-  margin: var(--spacing-xs) 0;
-  color: var(--text-primary);
+.stock-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr 100px 40px;
+  gap: var(--spacing-sm);
+  align-items: center;
+}
+
+.allocation-input-group {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
 }
 
 .allocation-input {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-md);
-  margin-top: var(--spacing-sm);
-}
-
-.allocation-slider {
-  flex: 1;
-  height: 6px;
-  background: var(--border-light);
-  border-radius: 3px;
-  outline: none;
-  -webkit-appearance: none;
-  appearance: none;         /* 표준 */
-
-}
-
-.allocation-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 20px;
-  height: 20px;
-  background: var(--primary-color);
-  border-radius: 50%;
-  cursor: pointer;
-}
-
-.allocation-slider::-moz-range-thumb {
-  width: 20px;
-  height: 20px;
-  background: var(--primary-color);
-  border-radius: 50%;
-  cursor: pointer;
-  border: none;
-}
-
-.allocation-number {
-  width: 80px;
+  width: 60px;
   text-align: center;
-  border: 1px solid var(--border-light);
-  border-radius: var(--border-radius-sm);
-  padding: var(--spacing-xs);
 }
 
 .allocation-unit {
@@ -416,10 +583,46 @@ export default {
   color: var(--text-secondary);
 }
 
-.allocation-display {
-  margin-top: var(--spacing-sm);
+.btn-remove {
+  background: var(--error-color);
+  color: var(--white);
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: var(--font-lg);
+  line-height: 1;
+}
+
+.add-stock-btn {
+  width: 100%;
+  margin-bottom: var(--spacing-md);
+}
+
+.allocation-summary {
+  text-align: center;
+  padding: var(--spacing-sm);
+  background-color: var(--white);
+  border-radius: var(--border-radius-sm);
+}
+
+.total-allocation {
+  font-weight: var(--font-medium);
+  color: var(--success-color);
+}
+
+.total-allocation.invalid {
+  color: var(--error-color);
+}
+
+.allocation-warning {
   font-size: var(--font-sm);
-  color: var(--text-secondary);
+  color: var(--error-color);
+  margin-left: var(--spacing-sm);
 }
 
 .strategy-actions {
@@ -470,7 +673,8 @@ export default {
 
 /* 모바일 반응형 */
 @media (max-width: 768px) {
-  .market-options {
+  .market-options,
+  .region-options {
     grid-template-columns: 1fr;
   }
   
@@ -480,13 +684,9 @@ export default {
     gap: var(--spacing-sm);
   }
   
-  .allocation-input {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  
-  .allocation-number {
-    width: 100%;
+  .stock-inputs {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-sm);
   }
   
   .strategy-actions {
@@ -497,10 +697,6 @@ export default {
   
   .action-buttons {
     justify-content: center;
-  }
-  
-  .action-buttons .btn {
-    flex: 1;
   }
 }
 </style>

@@ -84,11 +84,13 @@ const actions = {
     commit('SET_LOADING', true)
     
     try {
+      console.log('전략 생성 데이터:', strategyData)
+      
       const response = await apiClient.post('/trading/strategies', strategyData)
       
       if (response.data.success) {
         commit('ADD_STRATEGY', response.data.data)
-        await dispatch('loadTradingStatus')
+        commit('SET_CURRENT_STRATEGY', response.data.data)
         
         const toast = useToast()
         toast.success('전략이 생성되었습니다.')
@@ -111,6 +113,8 @@ const actions = {
     commit('SET_LOADING', true)
     
     try {
+      console.log('자동매매 시작 요청:', strategyId)
+      
       const response = await apiClient.post('/trading/start', {
         strategyId
       })
@@ -139,6 +143,8 @@ const actions = {
     commit('SET_LOADING', true)
     
     try {
+      console.log('자동매매 중단 요청')
+      
       const response = await apiClient.post('/trading/stop')
       
       if (response.data.success) {

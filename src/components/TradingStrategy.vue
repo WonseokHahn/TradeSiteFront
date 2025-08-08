@@ -591,7 +591,7 @@ export default {
 
 .stock-inputs {
   display: grid;
-  grid-template-columns: 1fr 1.5fr 100px 40px;
+  grid-template-columns: 1fr 1.5fr 120px 40px;
   gap: var(--spacing-sm);
   align-items: center;
 }
@@ -600,16 +600,23 @@ export default {
   display: flex;
   align-items: center;
   gap: var(--spacing-xs);
+  min-width: 120px; /* 최소 너비 보장 */
 }
 
 .allocation-input {
-  width: 60px;
+  width: 85px; /* 80px → 85px로 증가 */
   text-align: center;
+  font-size: var(--font-md);
+  padding: var(--spacing-sm);
+  min-width: 85px; /* 최소 너비도 함께 증가 */
 }
 
 .allocation-unit {
   font-weight: var(--font-medium);
   color: var(--text-secondary);
+  font-size: var(--font-md);
+  min-width: 20px; /* % 기호가 잘리지 않도록 */
+  flex-shrink: 0; /* 축소되지 않도록 */
 }
 
 .btn-remove {
@@ -751,6 +758,11 @@ export default {
   .stock-inputs {
     grid-template-columns: 1fr;
     gap: var(--spacing-sm);
+  }
+  
+  .allocation-input-group {
+    justify-content: flex-start;
+    width: auto;
   }
   
   .strategy-actions {

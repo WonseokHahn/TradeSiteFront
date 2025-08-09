@@ -196,7 +196,7 @@
           <div class="action-buttons">
             <button 
               v-if="!isTrading"
-              @click="startTrading"
+              @click="handleStartTrading"
               :disabled="!isValidStrategy || loading"
               class="btn btn-success"
             >
@@ -206,7 +206,7 @@
             
             <button 
               v-if="isTrading"
-              @click="stopTrading"
+              @click="handleStopTrading"
               :disabled="loading"
               class="btn btn-danger"
             >
@@ -265,14 +265,16 @@ export default {
       this.loadCurrentStrategy()
     }
   },
+  // TradingStrategy.vue의 methods 섹션을 이것으로 완전히 교체하세요
+
   methods: {
     ...mapActions('trading', [
       'loadTradingStatus', 
       'createStrategy',
-      'startTrading as startTradingAction',
-      'stopTrading as stopTradingAction'
+      'startTrading', // ← 이름을 맞춰줍니다 (startTradingAction이 아니라 startTrading)
+      'stopTrading'   // ← 이것도 맞춰줍니다
     ]),
-    
+
     loadCurrentStrategy() {
       if (this.currentStrategy) {
         this.strategy = {
@@ -300,7 +302,7 @@ export default {
         const endpoint = this.strategy.region === 'domestic' 
           ? '/trading/account/balance/domestic'
           : '/trading/account/balance/global'
-        
+
         const response = await apiClient.get(endpoint)
         if (response.data.success) {
           this.accountBalance = response.data.data
@@ -312,7 +314,7 @@ export default {
         this.balanceLoading = false
       }
     },
-    
+
     addStock() {
       if (this.strategy.stocks.length < 10) { // 최대 10개 종목
         this.strategy.stocks.push({ 
@@ -325,18 +327,18 @@ export default {
         })
       }
     },
-    
+
     removeStock(index) {
       this.strategy.stocks.splice(index, 1)
       this.updateTotalAllocation()
     },
-    
+
     updateTotalAllocation() {
       this.totalAllocation = this.strategy.stocks.reduce((sum, stock) => {
         return sum + (parseInt(stock.allocation) || 0)
       }, 0)
     },
-    
+
     async validateStockCode(index) {
       const stock = this.strategy.stocks[index]
       if (!stock.code) {
@@ -345,13 +347,13 @@ export default {
         stock.price = null
         return
       }
-      
+
       stock.validating = true
       stock.error = null
-      
+
       try {
         let endpoint, validationResponse
-        
+
         if (this.strategy.region === 'domestic') {
           // 국내 주식 코드 검증 (6자리 숫자)
           if (!/^\d{6}$/.test(stock.code)) {
@@ -360,12 +362,12 @@ export default {
             stock.price = null
             return
           }
-          
+
           endpoint = '/trading/stock/info/domestic'
           validationResponse = await apiClient.get(endpoint, {
             params: { stockCode: stock.code }
           })
-          
+
         } else {
           // 해외 주식 티커 검증
           if (!/^[A-Z]{1,5}$/.test(stock.code.toUpperCase())) {
@@ -374,14 +376,14 @@ export default {
             stock.price = null
             return
           }
-          
+
           stock.code = stock.code.toUpperCase()
           endpoint = '/trading/stock/info/global'
           validationResponse = await apiClient.get(endpoint, {
             params: { ticker: stock.code }
           })
         }
-        
+
         if (validationResponse.data.success) {
           const stockInfo = validationResponse.data.data
           stock.name = stockInfo.name
@@ -392,7 +394,7 @@ export default {
           stock.name = ''
           stock.price = null
         }
-        
+
       } catch (error) {
         console.error('종목 검증 오류:', error)
         stock.error = '종목 정보를 가져올 수 없습니다'
@@ -402,29 +404,13 @@ export default {
         stock.validating = false
       }
     },
-    
-    // TradingStrategy.vue의 startTrading 메서드를 이것으로 교체하세요
 
-    async startTrading() {
+    // 🔥 수정된 handleStartTrading 메서드 (이름 변경!)
+    async handleStartTrading() {
       try {
-        // 🔍 상세한 디버깅 로그 추가
-        console.log('🔍 startTrading 시작');
+        console.log('🔍 handleStartTrading 시작');
         console.log('📊 현재 strategy 상태:', JSON.stringify(this.strategy, null, 2));
-        console.log('📊 isValidStrategy:', this.isValidStrategy);
-        console.log('📊 totalAllocation:', this.totalAllocation);
-        
-        // 각 주식 데이터 확인
-        this.strategy.stocks.forEach((stock, index) => {
-          console.log(`📊 Stock ${index + 1}:`, {
-            code: stock.code,
-            name: stock.name,
-            allocation: stock.allocation,
-            type_of_allocation: typeof stock.allocation,
-            error: stock.error,
-            validating: stock.validating
-          });
-        });
-        
+
         // 전략 생성 데이터 준비
         const strategyData = {
           marketType: this.strategy.marketType,
@@ -435,53 +421,76 @@ export default {
             allocation: parseInt(stock.allocation) || 0
           }))
         };
-        
+
         console.log('📤 서버로 전송할 데이터:', JSON.stringify(strategyData, null, 2));
-        
+
         // 전송 전 한번 더 검증
         const totalAlloc = strategyData.stocks.reduce((sum, stock) => sum + stock.allocation, 0);
         console.log('🔢 계산된 총 투자 비율:', totalAlloc);
-        
+
         if (totalAlloc !== 100) {
           console.error('❌ 투자 비율 오류:', totalAlloc);
-          this.$toast.error(`총 투자 비율이 100%가 아닙니다. (현재: ${totalAlloc}%)`);
+          if (this.$toast) {
+            this.$toast.error(`총 투자 비율이 100%가 아닙니다. (현재: ${totalAlloc}%)`);
+          }
           return;
         }
-        
+
+        // 전략 생성
         const success = await this.createStrategy(strategyData)
-        
+
         if (success) {
+          // 전략 생성 성공 후 자동매매 시작
           const latestStrategy = this.currentStrategy
-          if (latestStrategy) {
+          if (latestStrategy && latestStrategy.id) {
             console.log('🚀 자동매매 시작 중...', latestStrategy.id);
-            await this.startTradingAction(latestStrategy.id)
+
+            // 🔥 이제 mapActions에서 가져온 startTrading을 호출합니다
+            const startSuccess = await this.startTrading(latestStrategy.id)
+
+            if (startSuccess) {
+              if (this.$toast) {
+                this.$toast.success('자동매매가 시작되었습니다!');
+              }
+            }
           } else {
             console.error('❌ 현재 전략을 찾을 수 없음');
-            this.$toast.error('전략을 찾을 수 없습니다.');
+            if (this.$toast) {
+              this.$toast.error('전략을 찾을 수 없습니다.');
+            }
           }
         } else {
           console.error('❌ 전략 생성 실패');
         }
       } catch (error) {
-        console.error('❌ startTrading 전체 오류:', error)
-        this.$toast.error('자동매매 시작 중 오류가 발생했습니다.');
+        console.error('❌ handleStartTrading 전체 오류:', error);
+        if (this.$toast) {
+          this.$toast.error('자동매매 시작 중 오류가 발생했습니다.');
+        }
       }
     },
-    
-    async stopTrading() {
+
+    // 🔥 수정된 handleStopTrading 메서드 (이름 변경!)
+    async handleStopTrading() {
       try {
-        await this.stopTradingAction()
+        const success = await this.stopTrading() // mapActions에서 가져온 stopTrading 호출
+        if (success && this.$toast) {
+          this.$toast.success('자동매매가 중단되었습니다.');
+        }
       } catch (error) {
         console.error('자동매매 중단 오류:', error)
+        if (this.$toast) {
+          this.$toast.error('자동매매 중단 중 오류가 발생했습니다.');
+        }
       }
     },
 
     formatCurrency(amount, region) {
       if (!amount) return '-'
-      
+
       const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount
       if (isNaN(numAmount)) return '-'
-      
+
       if (region === 'domestic') {
         return numAmount.toLocaleString() + '원'
       } else {

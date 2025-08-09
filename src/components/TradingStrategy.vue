@@ -403,18 +403,68 @@ export default {
       }
     },
     
+    // TradingStrategy.vue의 startTrading 메서드를 이것으로 교체하세요
+
     async startTrading() {
       try {
-        const success = await this.createStrategy(this.strategy)
+        // 🔍 상세한 디버깅 로그 추가
+        console.log('🔍 startTrading 시작');
+        console.log('📊 현재 strategy 상태:', JSON.stringify(this.strategy, null, 2));
+        console.log('📊 isValidStrategy:', this.isValidStrategy);
+        console.log('📊 totalAllocation:', this.totalAllocation);
+        
+        // 각 주식 데이터 확인
+        this.strategy.stocks.forEach((stock, index) => {
+          console.log(`📊 Stock ${index + 1}:`, {
+            code: stock.code,
+            name: stock.name,
+            allocation: stock.allocation,
+            type_of_allocation: typeof stock.allocation,
+            error: stock.error,
+            validating: stock.validating
+          });
+        });
+        
+        // 전략 생성 데이터 준비
+        const strategyData = {
+          marketType: this.strategy.marketType,
+          region: this.strategy.region,
+          stocks: this.strategy.stocks.map(stock => ({
+            code: stock.code,
+            name: stock.name || stock.code,
+            allocation: parseInt(stock.allocation) || 0
+          }))
+        };
+        
+        console.log('📤 서버로 전송할 데이터:', JSON.stringify(strategyData, null, 2));
+        
+        // 전송 전 한번 더 검증
+        const totalAlloc = strategyData.stocks.reduce((sum, stock) => sum + stock.allocation, 0);
+        console.log('🔢 계산된 총 투자 비율:', totalAlloc);
+        
+        if (totalAlloc !== 100) {
+          console.error('❌ 투자 비율 오류:', totalAlloc);
+          this.$toast.error(`총 투자 비율이 100%가 아닙니다. (현재: ${totalAlloc}%)`);
+          return;
+        }
+        
+        const success = await this.createStrategy(strategyData)
         
         if (success) {
           const latestStrategy = this.currentStrategy
           if (latestStrategy) {
+            console.log('🚀 자동매매 시작 중...', latestStrategy.id);
             await this.startTradingAction(latestStrategy.id)
+          } else {
+            console.error('❌ 현재 전략을 찾을 수 없음');
+            this.$toast.error('전략을 찾을 수 없습니다.');
           }
+        } else {
+          console.error('❌ 전략 생성 실패');
         }
       } catch (error) {
-        console.error('자동매매 시작 오류:', error)
+        console.error('❌ startTrading 전체 오류:', error)
+        this.$toast.error('자동매매 시작 중 오류가 발생했습니다.');
       }
     },
     

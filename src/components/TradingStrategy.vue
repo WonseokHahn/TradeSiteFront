@@ -405,12 +405,13 @@ export default {
       }
     },
 
-    // 🔥 수정된 handleStartTrading 메서드 (이름 변경!)
+    // TradingStrategy.vue의 handleStartTrading 메서드를 이것으로 교체하세요
+
     async handleStartTrading() {
       try {
         console.log('🔍 handleStartTrading 시작');
         console.log('📊 현재 strategy 상태:', JSON.stringify(this.strategy, null, 2));
-
+        
         // 전략 생성 데이터 준비
         const strategyData = {
           marketType: this.strategy.marketType,
@@ -421,40 +422,54 @@ export default {
             allocation: parseInt(stock.allocation) || 0
           }))
         };
-
+        
         console.log('📤 서버로 전송할 데이터:', JSON.stringify(strategyData, null, 2));
-
+        
         // 전송 전 한번 더 검증
         const totalAlloc = strategyData.stocks.reduce((sum, stock) => sum + stock.allocation, 0);
         console.log('🔢 계산된 총 투자 비율:', totalAlloc);
-
+        
         if (totalAlloc !== 100) {
           console.error('❌ 투자 비율 오류:', totalAlloc);
           if (this.$toast) {
-            this.$toast.error(`총 투자 비율이 100%가 아닙니다. (현재: ${totalAlloc}%)`);
+            this.$toast.error(`총 투자 비율이 100%가 되어야 합니다. (현재: ${totalAlloc}%)`);
           }
           return;
         }
-
-        // 전략 생성
+        
+        // 1️⃣ 먼저 전략 생성
         const success = await this.createStrategy(strategyData)
-
+        
         if (success) {
-          // 전략 생성 성공 후 자동매매 시작
+          console.log('✅ 전략 생성 성공');
+          
+          // 2️⃣ 잠시 기다려서 currentStrategy가 업데이트되도록 함
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          // 3️⃣ 현재 전략 확인
           const latestStrategy = this.currentStrategy
+          console.log('📊 생성된 전략:', latestStrategy);
+          
           if (latestStrategy && latestStrategy.id) {
             console.log('🚀 자동매매 시작 중...', latestStrategy.id);
-
-            // 🔥 이제 mapActions에서 가져온 startTrading을 호출합니다
+            
+            // 4️⃣ 자동매매 시작
             const startSuccess = await this.startTrading(latestStrategy.id)
-
+            
             if (startSuccess) {
+              console.log('✅ 자동매매 시작 성공!');
+              
+              // 5️⃣ 상태 강제 새로고침
+              await this.loadTradingStatus()
+              
               if (this.$toast) {
                 this.$toast.success('자동매매가 시작되었습니다!');
               }
+            } else {
+              console.error('❌ 자동매매 시작 실패');
             }
           } else {
-            console.error('❌ 현재 전략을 찾을 수 없음');
+            console.error('❌ 현재 전략을 찾을 수 없음:', latestStrategy);
             if (this.$toast) {
               this.$toast.error('전략을 찾을 수 없습니다.');
             }

@@ -1,3 +1,5 @@
+// src/store/modules/trading.js 파일을 이것으로 교체하세요
+
 import apiClient from '@/utils/api'
 import { useToast } from 'vue-toastification'
 
@@ -23,6 +25,7 @@ const mutations = {
   },
   
   SET_TRADING_STATUS(state, status) {
+    console.log('🔄 SET_TRADING_STATUS 호출:', status)
     state.isTrading = status.isActive
     state.currentStrategy = status.strategy
   },
@@ -33,6 +36,12 @@ const mutations = {
   
   ADD_STRATEGY(state, strategy) {
     state.strategies.unshift(strategy)
+  },
+
+  // 🔥 새로 추가: 자동매매 상태만 업데이트
+  SET_IS_TRADING(state, isTrading) {
+    console.log('🔄 SET_IS_TRADING 호출:', isTrading)
+    state.isTrading = isTrading
   }
 }
 
@@ -70,9 +79,11 @@ const actions = {
   
   async loadTradingStatus({ commit }) {
     try {
+      console.log('🔍 loadTradingStatus 호출')
       const response = await apiClient.get('/trading/status')
       
       if (response.data.success) {
+        console.log('📊 받은 trading status:', response.data.data)
         commit('SET_TRADING_STATUS', response.data.data)
       }
     } catch (error) {
@@ -113,13 +124,17 @@ const actions = {
     commit('SET_LOADING', true)
     
     try {
-      console.log('자동매매 시작 요청:', strategyId)
+      console.log('🚀 자동매매 시작 요청:', strategyId)
       
       const response = await apiClient.post('/trading/start', {
         strategyId
       })
       
       if (response.data.success) {
+        // 🔥 자동매매 시작 즉시 상태 업데이트
+        commit('SET_IS_TRADING', true)
+        
+        // 그 다음 전체 상태 다시 로드
         await dispatch('loadTradingStatus')
         
         const toast = useToast()
@@ -143,11 +158,15 @@ const actions = {
     commit('SET_LOADING', true)
     
     try {
-      console.log('자동매매 중단 요청')
+      console.log('⏹️ 자동매매 중단 요청')
       
       const response = await apiClient.post('/trading/stop')
       
       if (response.data.success) {
+        // 🔥 자동매매 중단 즉시 상태 업데이트
+        commit('SET_IS_TRADING', false)
+        
+        // 그 다음 전체 상태 다시 로드
         await dispatch('loadTradingStatus')
         
         const toast = useToast()
@@ -172,7 +191,10 @@ const getters = {
   strategies: state => state.strategies,
   bestStrategy: state => state.bestStrategy,
   currentStrategy: state => state.currentStrategy,
-  isTrading: state => state.isTrading,
+  isTrading: state => {
+    console.log('🔍 getters.isTrading 호출됨:', state.isTrading)
+    return state.isTrading
+  },
   isLoading: state => state.loading,
   hasStrategies: state => state.strategies.length > 0
 }

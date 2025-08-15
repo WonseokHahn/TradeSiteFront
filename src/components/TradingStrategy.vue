@@ -568,15 +568,58 @@ export default {
       }
     },
 
-    // 🔥 수정된 handleStopTrading 메서드 (이름 변경!)
+    // TradingStrategy.vue의 handleStopTrading 메서드를 이것으로 교체
     async handleStopTrading() {
       try {
-        const success = await this.stopTrading() // mapActions에서 가져온 stopTrading 호출
-        if (success && this.$toast) {
-          this.$toast.success('자동매매가 중단되었습니다.');
+        console.log('⏹️ 자동매매 중단 요청 시작');
+        
+        // 1️⃣ 즉시 UI 상태를 false로 설정 (사용자 경험 개선)
+        this.$store.commit('trading/SET_IS_TRADING', false);
+        
+        // 2️⃣ 자동매매 중단 API 호출
+        const success = await this.stopTrading();
+        
+        if (success) {
+          console.log('✅ 자동매매 중단 API 성공');
+          
+          // 3️⃣ 서버 상태 동기화를 위한 충분한 지연
+          await new Promise(resolve => setTimeout(resolve, 1500));
+          
+          // 4️⃣ 상태 새로고침
+          await this.loadTradingStatus();
+          
+          // 5️⃣ 혹시 모를 상황을 대비한 추가 체크
+          const finalState = this.$store.getters['trading/isTrading'];
+          console.log('🔍 최종 확인된 상태:', finalState);
+          
+          if (finalState === true) {
+            console.log('⚠️ 상태가 여전히 true - 강제로 false 설정');
+            this.$store.commit('trading/SET_IS_TRADING', false);
+            this.$store.commit('trading/SET_CURRENT_STRATEGY', null);
+          }
+          
+          // 6️⃣ 토스트 메시지
+          if (this.$toast) {
+            this.$toast.success('자동매매가 중단되었습니다.');
+          }
+          
+          console.log('✅ 자동매매 중단 처리 완료');
+        } else {
+          console.error('❌ 자동매매 중단 API 실패 - 상태 복원');
+          
+          // API 실패시 상태 복원
+          await this.loadTradingStatus();
+          
+          if (this.$toast) {
+            this.$toast.error('자동매매 중단에 실패했습니다.');
+          }
         }
       } catch (error) {
-        console.error('자동매매 중단 오류:', error)
+        console.error('❌ handleStopTrading 전체 오류:', error);
+        
+        // 오류 발생시 상태 복원
+        await this.loadTradingStatus();
+        
         if (this.$toast) {
           this.$toast.error('자동매매 중단 중 오류가 발생했습니다.');
         }

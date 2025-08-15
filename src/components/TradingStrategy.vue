@@ -627,6 +627,7 @@ export default {
       }
     },
 
+    // TradingStrategy.vue의 handleStartTrading 메서드를 이것으로 교체
     async handleStartTrading() {
       try {
         console.log('🔍 자동매매 시작 프로세스 시작');
@@ -656,7 +657,7 @@ export default {
           }))
         };
         
-        console.log('📤 서버로 전송할 데이터:', JSON.stringify(strategyData, null, 2));
+        console.log('📤 전략 생성용 데이터:', JSON.stringify(strategyData, null, 2));
         
         // 3️⃣ 투자 비율 검증
         const totalAlloc = strategyData.stocks.reduce((sum, stock) => sum + stock.allocation, 0);
@@ -672,59 +673,78 @@ export default {
         
         // 4️⃣ 전략 생성
         console.log('✍️ 전략 생성 중...');
-        const success = await this.createStrategy(strategyData);
+        const createSuccess = await this.createStrategy(strategyData);
         
-        if (success) {
-          console.log('✅ 전략 생성 성공');
+        if (!createSuccess) {
+          console.error('❌ 전략 생성 실패');
+          if (this.$toast) {
+            this.$toast.error('전략 생성에 실패했습니다.');
+          }
+          return;
+        }
+        
+        console.log('✅ 전략 생성 성공');
+        
+        // 5️⃣ 잠시 기다려서 currentStrategy가 업데이트되도록 함
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // 6️⃣ 현재 전략 확인
+        const latestStrategy = this.currentStrategy;
+        console.log('📊 생성된 전략 확인:', latestStrategy);
+        
+        if (!latestStrategy || !latestStrategy.id) {
+          console.error('❌ 생성된 전략을 찾을 수 없음');
           
-          // 5️⃣ 잠시 기다려서 currentStrategy가 업데이트되도록 함
-          await new Promise(resolve => setTimeout(resolve, 100));
+          // 수동으로 전략 상태 다시 로드 시도
+          await this.loadTradingStatus();
+          const retryStrategy = this.currentStrategy;
           
-          // 6️⃣ 현재 전략 확인
-          const latestStrategy = this.currentStrategy;
-          console.log('📊 생성된 전략:', latestStrategy);
-          
-          if (latestStrategy && latestStrategy.id) {
-            console.log('🚀 자동매매 시작 중...', latestStrategy.id);
-            
-            // 7️⃣ 자동매매 시작 (시장 상태는 서버에서 재확인)
-            const startSuccess = await this.startTrading(latestStrategy.id);
-            
-            if (startSuccess) {
-              console.log('✅ 자동매매 시작 성공!');
-              
-              // 8️⃣ 상태 강제 새로고침
-              await this.loadTradingStatus();
-              await this.loadMarketStatus(); // 시장 상태도 새로고침
-              
-              if (this.$toast) {
-                this.$toast.success('🟢 시장이 열려있어 자동매매가 시작되었습니다!');
-              }
-            } else {
-              console.error('❌ 자동매매 시작 실패 - 서버에서 거부됨');
-              
-              // 시장 상태 재확인
-              await this.loadMarketStatus();
-              
-              if (this.$toast) {
-                this.$toast.error('자동매매 시작이 거부되었습니다. 시장 상태를 확인해주세요.');
-              }
-            }
-          } else {
-            console.error('❌ 현재 전략을 찾을 수 없음:', latestStrategy);
+          if (!retryStrategy || !retryStrategy.id) {
             if (this.$toast) {
-              this.$toast.error('전략을 찾을 수 없습니다.');
+              this.$toast.error('전략 생성은 성공했지만 전략 정보를 찾을 수 없습니다.');
             }
+            return;
+          }
+          
+          console.log('✅ 재시도로 전략 발견:', retryStrategy);
+        }
+        
+        const finalStrategy = latestStrategy || this.currentStrategy;
+        
+        // 7️⃣ 자동매매 시작
+        console.log('🚀 자동매매 시작 중... strategyId:', finalStrategy.id, '타입:', typeof finalStrategy.id);
+        
+        const startSuccess = await this.startTrading(finalStrategy.id);
+        
+        if (startSuccess) {
+          console.log('✅ 자동매매 시작 성공!');
+          
+          // 8️⃣ 상태 강제 새로고침
+          await this.loadTradingStatus();
+          await this.loadMarketStatus();
+          
+          if (this.$toast) {
+            this.$toast.success('🟢 시장이 열려있어 자동매매가 시작되었습니다!');
           }
         } else {
-          console.error('❌ 전략 생성 실패');
+          console.error('❌ 자동매매 시작 실패 - startTrading 메서드에서 false 반환');
+          
+          // 시장 상태 재확인
+          await this.loadMarketStatus();
+          
+          if (this.$toast) {
+            this.$toast.error('자동매매 시작이 거부되었습니다. 시장 상태를 확인해주세요.');
+          }
         }
+        
       } catch (error) {
         console.error('❌ handleStartTrading 전체 오류:', error);
+        console.error('❌ 오류 스택:', error.stack);
         
         if (error.response && error.response.data && error.response.data.message) {
           // 서버에서 온 구체적인 오류 메시지 표시
           console.error('서버 오류 메시지:', error.response.data.message);
+          console.error('서버 오류 전체:', error.response.data);
           
           if (this.$toast) {
             this.$toast.error(error.response.data.message);

@@ -428,21 +428,6 @@ export default {
       return typeMap[orderType] || orderType;
     },
 
-    // 향상된 상태 텍스트 변환
-    getStatusText(status) {
-      if (!status) return '알 수 없음';
-
-      const statusMap = {
-        'PENDING': '대기',
-        'FILLED': '체결',
-        'PARTIALLY_FILLED': '부분체결',
-        'CANCELLED': '취소',
-        'REJECTED': '거부',
-        'REBALANCING_SUGGESTION': '제안'
-      };
-      return statusMap[status] || status;
-    },
-
     formatDateTime(dateString) {
       if (!dateString) return '-'
       

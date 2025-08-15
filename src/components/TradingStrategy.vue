@@ -6,9 +6,10 @@
       </div>
       
       <div class="card-body">
-        <!-- 시장 상태 선택 -->
+
+        <!-- 시장 상태 선택 - 향상된 버전 -->
         <div class="form-group">
-          <label class="form-label">시장 상태 선택</label>
+          <label class="form-label">시장 상태 및 전략 선택</label>
           <div class="market-options">
             <label class="market-option">
               <input 
@@ -19,11 +20,22 @@
               >
               <div class="market-card bull">
                 <div class="market-icon">📈</div>
-                <div class="market-label">상승장 전략</div>
-                <div class="market-desc">모멘텀 + 성장주 중심</div>
+                <div class="market-label">상승장 모멘텀 전략</div>
+                <div class="market-desc">
+                  <strong>기술적 분석 기반 매매:</strong><br>
+                  • RSI, MACD, 이동평균선 분석<br>
+                  • 골든크로스 시 매수 신호<br>
+                  • 모멘텀 지속성 확인 후 진입<br>
+                  • 과매수 구간에서 일부 매도
+                </div>
+                <div class="strategy-indicators">
+                  <span class="indicator">RSI 30-70</span>
+                  <span class="indicator">MACD↗</span>
+                  <span class="indicator">MA정배열</span>
+                </div>
               </div>
             </label>
-            
+
             <label class="market-option">
               <input 
                 type="radio" 
@@ -33,13 +45,84 @@
               >
               <div class="market-card bear">
                 <div class="market-icon">📉</div>
-                <div class="market-label">하락장 전략</div>
-                <div class="market-desc">가치주 + 배당주 중심</div>
+                <div class="market-label">하락장 가치투자 전략</div>
+                <div class="market-desc">
+                  <strong>역추세 매매 및 손절관리:</strong><br>
+                  • RSI 과매도 구간 매수<br>
+                  • 볼린저밴드 하단 터치시 진입<br>
+                  • 장기 이평선 이탈시 손절<br>
+                  • 분할 매수로 리스크 분산
+                </div>
+                <div class="strategy-indicators">
+                  <span class="indicator">RSI <30</span>
+                  <span class="indicator">볼린저하단</span>
+                  <span class="indicator">가치매수</span>
+                </div>
               </div>
             </label>
           </div>
-        </div>
 
+          <!-- 선택된 전략의 상세 설명 -->
+          <div v-if="strategy.marketType" class="strategy-details">
+            <div class="strategy-detail-card">
+              <h4 class="detail-title">
+                {{ strategy.marketType === 'bull' ? '상승장 모멘텀 전략' : '하락장 가치투자 전략' }} 상세 정보
+              </h4>
+
+              <div v-if="strategy.marketType === 'bull'" class="strategy-explanation">
+                <div class="explanation-section">
+                  <h5>📊 사용하는 기술적 지표</h5>
+                  <ul>
+                    <li><strong>RSI (14일):</strong> 30-70 구간에서 매수, 80 이상시 매도</li>
+                    <li><strong>이동평균선:</strong> 5일선 > 20일선 정배열시 매수 신호</li>
+                    <li><strong>MACD:</strong> 골든크로스 형성시 매수 진입</li>
+                    <li><strong>모멘텀:</strong> 10일간 +5% 이상시 추가 매수</li>
+                  </ul>
+                </div>
+
+                <div class="explanation-section">
+                  <h5>⚡ 매매 실행 로직</h5>
+                  <ul>
+                    <li>신호 강도 40점 이상시 매수 실행</li>
+                    <li>신호 강도에 따라 투자 비중 조절 (최대 120%)</li>
+                    <li>30분 간격으로 중복 주문 방지</li>
+                    <li>과매수 신호시 보유량의 30-80% 매도</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div v-else class="strategy-explanation">
+                <div class="explanation-section">
+                  <h5>📊 사용하는 기술적 지표</h5>
+                  <ul>
+                    <li><strong>RSI (14일):</strong> 30 미만 과매도시 매수, 70 이상시 매도</li>
+                    <li><strong>볼린저밴드:</strong> 하단 터치시 매수, 상단 도달시 매도</li>
+                    <li><strong>50일 이동평균:</strong> 10% 이상 하락시 가치매수</li>
+                    <li><strong>장기 모멘텀:</strong> 20일간 -15% 이상 하락시 진입</li>
+                  </ul>
+                </div>
+
+                <div class="explanation-section">
+                  <h5>🛡️ 리스크 관리 로직</h5>
+                  <ul>
+                    <li>분할 매수로 평균 단가 낮추기</li>
+                    <li>극심한 하락(-25%)시 손절매 실행</li>
+                    <li>과매수 구간에서 점진적 매도</li>
+                    <li>포트폴리오 리밸런싱 자동 제안</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div class="strategy-warning">
+                <div class="warning-icon">⚠️</div>
+                <div class="warning-text">
+                  <strong>주의사항:</strong> 모든 기술적 분석은 과거 데이터를 기반으로 하며, 
+                  미래 수익을 보장하지 않습니다. 투자에 따른 손실의 책임은 투자자 본인에게 있습니다.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
         <!-- 투자 지역 선택 -->
         <div class="form-group">
           <label class="form-label">투자 지역</label>
@@ -810,6 +893,185 @@ export default {
   border-radius: 50%;
   border-top-color: var(--primary-color);
   animation: spin 1s ease-in-out infinite;
+}
+
+/* 기존 CSS에 추가할 새로운 스타일들 */
+
+.market-desc {
+  font-size: var(--font-sm);
+  line-height: 1.4;
+  color: var(--text-secondary);
+  margin: var(--spacing-sm) 0;
+}
+
+.market-desc strong {
+  color: var(--text-primary);
+  display: block;
+  margin-bottom: var(--spacing-xs);
+}
+
+.strategy-indicators {
+  display: flex;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.indicator {
+  background-color: rgba(25, 118, 210, 0.1);
+  color: var(--primary-color);
+  padding: 2px 6px;
+  border-radius: var(--border-radius-sm);
+  font-size: var(--font-xs);
+  font-weight: var(--font-medium);
+}
+
+.market-card.bull .indicator {
+  background-color: rgba(76, 175, 80, 0.1);
+  color: var(--success-color);
+}
+
+.market-card.bear .indicator {
+  background-color: rgba(244, 67, 54, 0.1);
+  color: var(--error-color);
+}
+
+.strategy-details {
+  margin-top: var(--spacing-lg);
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.strategy-detail-card {
+  background-color: var(--bg-secondary);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-lg);
+  border-left: 4px solid var(--primary-color);
+}
+
+.detail-title {
+  font-size: var(--font-lg);
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-md);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.strategy-explanation {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+}
+
+.explanation-section h5 {
+  font-size: var(--font-md);
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.explanation-section ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.explanation-section li {
+  padding: var(--spacing-xs) 0;
+  color: var(--text-secondary);
+  font-size: var(--font-sm);
+  line-height: 1.4;
+  position: relative;
+  padding-left: var(--spacing-md);
+}
+
+.explanation-section li::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: var(--primary-color);
+  font-weight: var(--font-bold);
+}
+
+.explanation-section li strong {
+  color: var(--text-primary);
+}
+
+.strategy-warning {
+  display: flex;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background-color: rgba(255, 152, 0, 0.1);
+  border-radius: var(--border-radius-md);
+  border: 1px solid var(--warning-color);
+}
+
+.warning-icon {
+  font-size: var(--font-lg);
+  flex-shrink: 0;
+}
+
+.warning-text {
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.warning-text strong {
+  color: var(--warning-color);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 모바일 반응형 */
+@media (max-width: 768px) {
+  .strategy-explanation {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-md);
+  }
+  
+  .strategy-indicators {
+    justify-content: center;
+  }
+  
+  .indicator {
+    font-size: 10px;
+    padding: 1px 4px;
+  }
+  
+  .market-desc {
+    font-size: 12px;
+    text-align: center;
+  }
+  
+  .explanation-section li {
+    font-size: 12px;
+    padding-left: var(--spacing-sm);
+  }
+  
+  .detail-title {
+    font-size: var(--font-md);
+    text-align: center;
+  }
+  
+  .strategy-warning {
+    flex-direction: column;
+    text-align: center;
+  }
 }
 
 @keyframes spin {

@@ -103,23 +103,25 @@
             </div>
             
             <div v-else class="orders-container">
-              <!-- 데스크톱 테이블 -->
+              <!-- 데스크톱 테이블 - 기술적 분석 정보 포함 -->
               <div class="orders-table desktop-only">
                 <div class="table-header">
                   <div class="table-cell">시간</div>
                   <div class="table-cell">종목</div>
-                  <div class="table-cell">지역</div>
+                  <div class="table-cell">전략</div>
                   <div class="table-cell">구분</div>
                   <div class="table-cell">수량</div>
                   <div class="table-cell">가격</div>
                   <div class="table-cell">총액</div>
                   <div class="table-cell">상태</div>
+                  <div class="table-cell">분석정보</div>
                 </div>
-                
+
                 <div 
                   v-for="order in displayedOrders" 
                   :key="order.id"
                   class="table-row"
+                  :class="{ 'rebalancing-row': order.is_rebalancing }"
                 >
                   <div class="table-cell">
                     {{ formatDateTime(order.executed_at || order.created_at) }}
@@ -128,29 +130,35 @@
                     <div class="stock-info">
                       <strong>{{ order.stock_code }}</strong>
                       <span class="stock-name">{{ order.stock_name || '종목명' }}</span>
+                      <span class="region-badge" :class="order.region">
+                        {{ order.region === 'domestic' ? '🇰🇷' : '🌍' }}
+                      </span>
                     </div>
                   </div>
                   <div class="table-cell">
-                    <span class="region-badge" :class="order.region">
-                      {{ order.region === 'domestic' ? '🇰🇷 국내' : '🌍 해외' }}
-                    </span>
+                    <div class="strategy-info">
+                      <span class="strategy-name">{{ order.strategy_name }}</span>
+                      <span class="market-type" :class="order.market_type">
+                        {{ order.market_type === 'bull' ? '상승장' : '하락장' }}
+                      </span>
+                    </div>
                   </div>
                   <div class="table-cell">
                     <span 
                       class="order-type" 
                       :class="order.order_type ? order.order_type.toLowerCase() : ''"
                     >
-                      {{ order.order_type === 'BUY' ? '매수' : '매도' }}
+                      {{ getOrderTypeText(order.order_type) }}
                     </span>
                   </div>
                   <div class="table-cell">
-                    {{ formatNumber(order.quantity) }}주
+                    {{ order.is_rebalancing ? '-' : formatNumber(order.quantity) + '주' }}
                   </div>
                   <div class="table-cell">
-                    {{ formatPrice(order.executed_price || order.order_price, order.region) }}
+                    {{ order.is_rebalancing ? '-' : formatPrice(order.executed_price || order.order_price, order.region) }}
                   </div>
                   <div class="table-cell">
-                    {{ formatPrice(order.total_amount, order.region) }}
+                    {{ order.is_rebalancing ? '-' : formatPrice(order.total_amount, order.region) }}
                   </div>
                   <div class="table-cell">
                     <span 
@@ -160,34 +168,58 @@
                       {{ getStatusText(order.status) }}
                     </span>
                   </div>
+                  <div class="table-cell">
+                    <div class="technical-analysis" v-if="order.technical_analysis">
+                      <button 
+                        @click="toggleAnalysisDetail(order.id)"
+                        class="analysis-toggle"
+                        :class="{ 'expanded': expandedAnalysis[order.id] }"
+                      >
+                        📊 분석정보
+                      </button>
+                      <div 
+                        v-if="expandedAnalysis[order.id]" 
+                        class="analysis-detail"
+                      >
+                        {{ order.technical_analysis }}
+                      </div>
+                    </div>
+                    <span v-else class="no-analysis">-</span>
+                  </div>
                 </div>
               </div>
 
-              <!-- 모바일 카드 -->
+              <!-- 모바일 카드 - 기술적 분석 정보 포함 -->
               <div class="orders-cards mobile-only">
                 <div 
                   v-for="order in displayedOrders" 
                   :key="order.id"
                   class="order-card"
+                  :class="{ 'rebalancing-card': order.is_rebalancing }"
                 >
                   <div class="order-header">
                     <div class="stock-info">
                       <strong>{{ order.stock_code }}</strong>
                       <span class="stock-name">{{ order.stock_name || '종목명' }}</span>
                     </div>
-                    <span class="region-badge" :class="order.region">
-                      {{ order.region === 'domestic' ? '🇰🇷' : '🌍' }}
-                    </span>
+                    <div class="order-badges">
+                      <span class="region-badge" :class="order.region">
+                        {{ order.region === 'domestic' ? '🇰🇷' : '🌍' }}
+                      </span>
+                      <span class="market-type" :class="order.market_type">
+                        {{ order.market_type === 'bull' ? '상승장' : '하락장' }}
+                      </span>
+                    </div>
                   </div>
-                  
-                  <div class="order-details">
+
+                  <div v-if="!order.is_rebalancing" class="order-details">
                     <div class="detail-row">
                       <span class="label">구분:</span>
                       <span 
                         class="order-type" 
                         :class="order.order_type ? order.order_type.toLowerCase() : ''"
                       >
-                        {{ order.order_type === 'BUY' ? '매수' : '매도' }}
+                        {{ getOrderTypeText(order.order_type) }}
                       </span>
                     </div>
                     <div class="detail-row">
@@ -203,17 +235,39 @@
                       <span class="total-amount">{{ formatPrice(order.total_amount, order.region) }}</span>
                     </div>
                   </div>
-                  
-                  <div class="order-footer">
-                    <span class="order-time">
-                      {{ formatDateTime(order.executed_at || order.created_at) }}
-                    </span>
-                    <span 
-                      class="order-status" 
-                      :class="order.status ? order.status.toLowerCase() : ''"
+
+                  <!-- 기술적 분석 정보 (모바일) -->
+                  <div v-if="order.technical_analysis" class="technical-analysis-mobile">
+                    <div class="analysis-header">
+                      <span class="analysis-label">📊 기술적 분석</span>
+                      <button 
+                        @click="toggleAnalysisDetail(order.id)"
+                        class="analysis-toggle-mobile"
+                      >
+                        {{ expandedAnalysis[order.id] ? '접기' : '펼치기' }}
+                      </button>
+                    </div>
+                    <div 
+                      v-if="expandedAnalysis[order.id]" 
+                      class="analysis-detail-mobile"
                     >
-                      {{ getStatusText(order.status) }}
-                    </span>
+                      {{ order.technical_analysis }}
+                    </div>
+                  </div>
+
+                  <div class="order-footer">
+                    <span class="strategy-name">{{ order.strategy_name }}</span>
+                    <div class="footer-right">
+                      <span class="order-time">
+                        {{ formatDateTime(order.executed_at || order.created_at) }}
+                      </span>
+                      <span 
+                        class="order-status" 
+                        :class="order.status ? order.status.toLowerCase() : ''"
+                      >
+                        {{ getStatusText(order.status) }}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -298,7 +352,9 @@ export default {
     return {
       tradingHistory: [],
       historyLoading: false,
-      displayLimit: 10
+      displayLimit: 10,
+      expandedAnalysis: {} // 기술적 분석 상세 표시 상태
+
     }
   },
   computed: {
@@ -356,7 +412,37 @@ export default {
     showMore() {
       this.displayLimit += 10
     },
-    
+   
+      // 기술적 분석 상세 정보 토글
+    toggleAnalysisDetail(orderId) {
+      this.$set(this.expandedAnalysis, orderId, !this.expandedAnalysis[orderId]);
+    },
+
+    // 주문 유형 텍스트 변환
+    getOrderTypeText(orderType) {
+      const typeMap = {
+        'BUY': '매수',
+        'SELL': '매도',
+        'REBALANCING_SUGGESTION': '리밸런싱 제안'
+      };
+      return typeMap[orderType] || orderType;
+    },
+
+    // 향상된 상태 텍스트 변환
+    getStatusText(status) {
+      if (!status) return '알 수 없음';
+
+      const statusMap = {
+        'PENDING': '대기',
+        'FILLED': '체결',
+        'PARTIALLY_FILLED': '부분체결',
+        'CANCELLED': '취소',
+        'REJECTED': '거부',
+        'REBALANCING_SUGGESTION': '제안'
+      };
+      return statusMap[status] || status;
+    },
+
     formatDateTime(dateString) {
       if (!dateString) return '-'
       
@@ -800,6 +886,216 @@ export default {
   color: var(--text-secondary);
   line-height: 1.6;
   margin: 0;
+}
+
+/* 기존 CSS에 추가할 새로운 스타일들 */
+
+/* 리밸런싱 관련 스타일 */
+.rebalancing-row {
+  background-color: rgba(255, 193, 7, 0.1);
+  border-left: 3px solid var(--warning-color);
+}
+
+.rebalancing-card {
+  border-left: 4px solid var(--warning-color);
+  background-color: rgba(255, 193, 7, 0.05);
+}
+
+.strategy-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.strategy-name {
+  font-size: var(--font-xs);
+  color: var(--text-primary);
+  font-weight: var(--font-medium);
+}
+
+.market-type {
+  font-size: 10px;
+  padding: 1px 4px;
+  border-radius: var(--border-radius-sm);
+  font-weight: var(--font-medium);
+}
+
+.market-type.bull {
+  background-color: rgba(76, 175, 80, 0.1);
+  color: var(--success-color);
+}
+
+.market-type.bear {
+  background-color: rgba(244, 67, 54, 0.1);
+  color: var(--error-color);
+}
+
+/* 기술적 분석 정보 스타일 */
+.technical-analysis {
+  position: relative;
+}
+
+.analysis-toggle {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: var(--white);
+  border: none;
+  padding: 4px 8px;
+  border-radius: var(--border-radius-sm);
+  font-size: 10px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.analysis-toggle:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.analysis-toggle.expanded {
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+}
+
+.analysis-detail {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background-color: var(--white);
+  border: 1px solid var(--border-light);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-sm);
+  font-size: var(--font-xs);
+  line-height: 1.3;
+  z-index: 10;
+  box-shadow: var(--shadow-md);
+  max-width: 300px;
+  word-wrap: break-word;
+}
+
+.no-analysis {
+  color: var(--gray);
+  font-size: var(--font-xs);
+}
+
+/* 모바일 기술적 분석 스타일 */
+.technical-analysis-mobile {
+  margin-top: var(--spacing-sm);
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid var(--border-light);
+}
+
+.analysis-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-xs);
+}
+
+.analysis-label {
+  font-size: var(--font-xs);
+  font-weight: var(--font-medium);
+  color: var(--primary-color);
+}
+
+.analysis-toggle-mobile {
+  background: none;
+  border: 1px solid var(--primary-color);
+  color: var(--primary-color);
+  padding: 2px 6px;
+  border-radius: var(--border-radius-sm);
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.analysis-detail-mobile {
+  background-color: var(--bg-secondary);
+  padding: var(--spacing-sm);
+  border-radius: var(--border-radius-sm);
+  font-size: var(--font-xs);
+  line-height: 1.4;
+  color: var(--text-secondary);
+  margin-top: var(--spacing-xs);
+}
+
+/* 주문 배지 스타일 개선 */
+.order-badges {
+  display: flex;
+  gap: var(--spacing-xs);
+  align-items: center;
+}
+
+.region-badge {
+  font-size: 12px;
+  padding: 2px 4px;
+  border-radius: var(--border-radius-sm);
+  background-color: var(--bg-secondary);
+}
+
+/* 주문 유형별 색상 개선 */
+.order-type.rebalancing_suggestion {
+  background-color: rgba(255, 193, 7, 0.1);
+  color: var(--warning-color);
+  border: 1px solid var(--warning-color);
+}
+
+.order-status.rebalancing_suggestion {
+  background-color: rgba(255, 193, 7, 0.1);
+  color: var(--warning-color);
+}
+
+/* 테이블 헤더 수정 */
+.table-header {
+  grid-template-columns: 100px 140px 120px 60px 80px 100px 100px 80px 120px;
+}
+
+.table-row {
+  grid-template-columns: 100px 140px 120px 60px 80px 100px 100px 80px 120px;
+}
+
+/* footer 개선 */
+.footer-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+/* 애니메이션 */
+.analysis-detail,
+.analysis-detail-mobile {
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 반응형 테이블 조정 */
+@media (max-width: 1200px) {
+  .table-header,
+  .table-row {
+    grid-template-columns: 90px 120px 100px 50px 70px 90px 90px 70px 100px;
+    font-size: var(--font-xs);
+  }
+  
+  .analysis-detail {
+    max-width: 250px;
+  }
+}
+
+@media (max-width: 768px) {
+  .analysis-toggle {
+    font-size: 9px;
+    padding: 3px 6px;
+  }
 }
 
 /* 모바일 반응형 */

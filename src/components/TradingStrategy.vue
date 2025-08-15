@@ -518,16 +518,16 @@ export default {
       }
     },
 
-    startMarketStatusAutoRefresh() {
-      console.log('🔄 시장 상태 자동 새로고침 시작 (2분 간격)');
+    // startMarketStatusAutoRefresh() {
+    //   console.log('🔄 시장 상태 자동 새로고침 시작 (2분 간격)');
       
-      this.marketStatusTimer = setInterval(async () => {
-        if (this.strategy.region) {
-          console.log('🕐 시장 상태 자동 새로고침...');
-          await this.loadMarketStatus();
-        }
-      }, 2 * 60 * 1000); // 2분마다
-    },
+    //   this.marketStatusTimer = setInterval(async () => {
+    //     if (this.strategy.region) {
+    //       console.log('🕐 시장 상태 자동 새로고침...');
+    //       await this.loadMarketStatus();
+    //     }
+    //   }, 2 * 60 * 1000); // 2분마다
+    // },
 
     stopMarketStatusAutoRefresh() {
       if (this.marketStatusTimer) {

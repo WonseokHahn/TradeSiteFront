@@ -6,7 +6,6 @@
       </div>
       
       <div class="card-body">
-
         <!-- 시장 상태 선택 - 향상된 버전 -->
         <div class="form-group">
           <label class="form-label">시장 상태 및 전략 선택</label>
@@ -35,7 +34,7 @@
                 </div>
               </div>
             </label>
-
+            
             <label class="market-option">
               <input 
                 type="radio" 
@@ -61,14 +60,14 @@
               </div>
             </label>
           </div>
-
+          
           <!-- 선택된 전략의 상세 설명 -->
           <div v-if="strategy.marketType" class="strategy-details">
             <div class="strategy-detail-card">
               <h4 class="detail-title">
                 {{ strategy.marketType === 'bull' ? '상승장 모멘텀 전략' : '하락장 가치투자 전략' }} 상세 정보
               </h4>
-
+              
               <div v-if="strategy.marketType === 'bull'" class="strategy-explanation">
                 <div class="explanation-section">
                   <h5>📊 사용하는 기술적 지표</h5>
@@ -79,7 +78,7 @@
                     <li><strong>모멘텀:</strong> 10일간 +5% 이상시 추가 매수</li>
                   </ul>
                 </div>
-
+                
                 <div class="explanation-section">
                   <h5>⚡ 매매 실행 로직</h5>
                   <ul>
@@ -90,7 +89,7 @@
                   </ul>
                 </div>
               </div>
-
+              
               <div v-else class="strategy-explanation">
                 <div class="explanation-section">
                   <h5>📊 사용하는 기술적 지표</h5>
@@ -101,7 +100,7 @@
                     <li><strong>장기 모멘텀:</strong> 20일간 -15% 이상 하락시 진입</li>
                   </ul>
                 </div>
-
+                
                 <div class="explanation-section">
                   <h5>🛡️ 리스크 관리 로직</h5>
                   <ul>
@@ -112,7 +111,7 @@
                   </ul>
                 </div>
               </div>
-
+              
               <div class="strategy-warning">
                 <div class="warning-icon">⚠️</div>
                 <div class="warning-text">
@@ -123,6 +122,7 @@
             </div>
           </div>
         </div>
+
         <!-- 투자 지역 선택 -->
         <div class="form-group">
           <label class="form-label">투자 지역</label>
@@ -154,6 +154,75 @@
                 <span class="region-text">해외 투자</span>
               </div>
             </label>
+          </div>
+        </div>
+
+        <!-- 시장 상태 정보 표시 -->
+        <div class="form-group">
+          <label class="form-label">
+            현재 시장 상태 
+            <span class="api-source">(한국투자증권 API 실시간)</span>
+          </label>
+          <div class="market-status-info">
+            <div v-if="marketStatusLoading" class="market-status-loading">
+              <div class="loading-spinner"></div>
+              <span>KIS API로 시장 상태 확인 중...</span>
+            </div>
+            <div v-else-if="marketStatus" class="market-status-display">
+              <div class="market-status-item" :class="{ 'market-open': marketStatus.isOpen, 'market-closed': !marketStatus.isOpen }">
+                <div class="status-indicator">
+                  <span class="status-dot" :class="{ 'open': marketStatus.isOpen, 'closed': !marketStatus.isOpen }"></span>
+                  <span class="status-text">{{ marketStatus.statusText }}</span>
+                </div>
+                <div class="market-details">
+                  <small class="api-info">
+                    {{ marketStatus.source === 'KIS_API' ? '🟢 실시간 API 데이터' : 
+                       marketStatus.source === 'FALLBACK_TIME' ? '🟡 시간 기반 추정' : '🔴 API 오류' }}
+                  </small>
+                  <small class="check-time">
+                    마지막 확인: {{ formatDateTime(marketStatus.checkedAt) }}
+                  </small>
+                  <small v-if="marketStatus.error" class="error-info">
+                    오류: {{ marketStatus.error }}
+                  </small>
+                </div>
+              </div>
+              <div class="status-actions">
+                <button @click="refreshMarketStatus" class="btn btn-sm btn-outline refresh-btn">
+                  🔄 즉시 새로고침
+                </button>
+                <small class="auto-refresh-info">2분마다 자동 새로고침</small>
+              </div>
+            </div>
+            <div v-else class="market-status-error">
+              <span>❌ 시장 상태를 확인할 수 없습니다.</span>
+              <button @click="loadMarketStatus" class="btn btn-sm btn-outline">다시 시도</button>
+            </div>
+            
+            <!-- 시장 마감 시 강화된 경고 메시지 -->
+            <div v-if="marketStatus && !marketStatus.isOpen" class="market-warning enhanced">
+              <div class="warning-icon">🚫</div>
+              <div class="warning-content">
+                <strong>자동매매 시작 불가</strong>
+                <p>{{ marketStatus.message }}</p>
+                <p class="warning-notice">
+                  한국투자증권 API에서 시장이 마감되었음을 확인했습니다. 
+                  시장이 열려있을 때만 자동매매를 시작할 수 있습니다.
+                </p>
+              </div>
+            </div>
+            
+            <!-- 시장 개장 시 확인 메시지 -->
+            <div v-if="marketStatus && marketStatus.isOpen" class="market-success">
+              <div class="success-icon">✅</div>
+              <div class="success-content">
+                <strong>자동매매 시작 가능</strong>
+                <p>{{ marketStatus.message }}</p>
+                <p class="success-notice">
+                  실시간 API 확인 결과 시장이 열려있어 자동매매를 시작할 수 있습니다.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -280,7 +349,7 @@
             <button 
               v-if="!isTrading"
               @click="handleStartTrading"
-              :disabled="!isValidStrategy || loading"
+              :disabled="!isValidStrategy || loading || (marketStatus && !marketStatus.isOpen)"
               class="btn btn-success"
             >
               <span v-if="loading" class="loading-spinner"></span>
@@ -302,7 +371,6 @@
     </div>
   </div>
 </template>
-
 <script>
 import { mapGetters, mapActions } from 'vuex'
 import apiClient from '@/utils/api'
@@ -320,14 +388,27 @@ export default {
       },
       totalAllocation: 50,
       accountBalance: null,
-      balanceLoading: false
+      balanceLoading: false,
+      marketStatus: null,
+      marketStatusLoading: false,
+      marketStatusTimer: null
     }
   },
   computed: {
-    ...mapGetters('trading', ['isTrading', 'isLoading', 'currentStrategy']),
+    ...mapGetters('trading', ['isTrading', 'currentStrategy', 'isLoading']),
     
     loading() {
       return this.isLoading
+    },
+    
+    debugTradingState() {
+      const state = {
+        isTrading: this.isTrading,
+        currentStrategy: this.currentStrategy,
+        isLoading: this.isLoading
+      };
+      console.log('🔍 현재 트레이딩 상태:', state);
+      return state;
     },
     
     isValidStrategy() {
@@ -342,20 +423,26 @@ export default {
   async created() {
     await this.loadTradingStatus()
     await this.loadAccountBalance()
+    await this.loadMarketStatus()
     
     // 현재 활성 전략이 있으면 폼에 로드
     if (this.currentStrategy) {
       this.loadCurrentStrategy()
     }
   },
-  // TradingStrategy.vue의 methods 섹션을 이것으로 완전히 교체하세요
-
+  mounted() {
+    // 2분마다 시장 상태 자동 새로고침
+    this.startMarketStatusAutoRefresh();
+  },
+  beforeDestroy() {
+    this.stopMarketStatusAutoRefresh();
+  },
   methods: {
     ...mapActions('trading', [
       'loadTradingStatus', 
       'createStrategy',
-      'startTrading', // ← 이름을 맞춰줍니다 (startTradingAction이 아니라 startTrading)
-      'stopTrading'   // ← 이것도 맞춰줍니다
+      'startTrading',
+      'stopTrading'
     ]),
 
     loadCurrentStrategy() {
@@ -369,7 +456,7 @@ export default {
       }
     },
 
-    onRegionChange() {
+    async onRegionChange() {
       // 지역 변경시 잔고 다시 조회 및 종목 정보 초기화
       this.loadAccountBalance()
       this.strategy.stocks.forEach(stock => {
@@ -377,6 +464,11 @@ export default {
         stock.error = null
         stock.price = null
       })
+      
+      // 타이머 재시작
+      this.stopMarketStatusAutoRefresh();
+      await this.loadMarketStatus();
+      this.startMarketStatusAutoRefresh();
     },
 
     async loadAccountBalance() {
@@ -395,6 +487,53 @@ export default {
         this.accountBalance = null
       } finally {
         this.balanceLoading = false
+      }
+    },
+
+    async loadMarketStatus() {
+      if (!this.strategy.region) return;
+      
+      this.marketStatusLoading = true;
+      try {
+        const response = await apiClient.get('/trading/market-status', {
+          params: { region: this.strategy.region }
+        });
+        
+        if (response.data.success) {
+          this.marketStatus = response.data.data;
+          console.log('📊 시장 상태 로드 완료:', this.marketStatus);
+        }
+      } catch (error) {
+        console.error('❌ 시장 상태 로드 실패:', error);
+        this.marketStatus = null;
+      } finally {
+        this.marketStatusLoading = false;
+      }
+    },
+
+    async refreshMarketStatus() {
+      await this.loadMarketStatus();
+      if (this.$toast) {
+        this.$toast.success('시장 상태가 업데이트되었습니다.');
+      }
+    },
+
+    startMarketStatusAutoRefresh() {
+      console.log('🔄 시장 상태 자동 새로고침 시작 (2분 간격)');
+      
+      this.marketStatusTimer = setInterval(async () => {
+        if (this.strategy.region) {
+          console.log('🕐 시장 상태 자동 새로고침...');
+          await this.loadMarketStatus();
+        }
+      }, 2 * 60 * 1000); // 2분마다
+    },
+
+    stopMarketStatusAutoRefresh() {
+      if (this.marketStatusTimer) {
+        console.log('⏹️ 시장 상태 자동 새로고침 중단');
+        clearInterval(this.marketStatusTimer);
+        this.marketStatusTimer = null;
       }
     },
 
@@ -488,14 +627,25 @@ export default {
       }
     },
 
-    // TradingStrategy.vue의 handleStartTrading 메서드를 이것으로 교체하세요
-
     async handleStartTrading() {
       try {
-        console.log('🔍 handleStartTrading 시작');
-        console.log('📊 현재 strategy 상태:', JSON.stringify(this.strategy, null, 2));
+        console.log('🔍 자동매매 시작 프로세스 시작');
         
-        // 전략 생성 데이터 준비
+        // 1️⃣ 시장 상태 먼저 재확인
+        console.log('🕐 시장 상태 재확인 중...');
+        await this.loadMarketStatus();
+        
+        if (this.marketStatus && !this.marketStatus.isOpen) {
+          console.log('❌ 시장 마감으로 인한 자동매매 시작 불가');
+          
+          if (this.$toast) {
+            this.$toast.error(`${this.marketStatus.statusText}\n시장이 열려있을 때 다시 시도해주세요.`);
+          }
+          return;
+        }
+        
+        // 2️⃣ 전략 데이터 검증
+        console.log('📊 전략 데이터 검증 중...');
         const strategyData = {
           marketType: this.strategy.marketType,
           region: this.strategy.region,
@@ -508,7 +658,7 @@ export default {
         
         console.log('📤 서버로 전송할 데이터:', JSON.stringify(strategyData, null, 2));
         
-        // 전송 전 한번 더 검증
+        // 3️⃣ 투자 비율 검증
         const totalAlloc = strategyData.stocks.reduce((sum, stock) => sum + stock.allocation, 0);
         console.log('🔢 계산된 총 투자 비율:', totalAlloc);
         
@@ -520,36 +670,45 @@ export default {
           return;
         }
         
-        // 1️⃣ 먼저 전략 생성
-        const success = await this.createStrategy(strategyData)
+        // 4️⃣ 전략 생성
+        console.log('✍️ 전략 생성 중...');
+        const success = await this.createStrategy(strategyData);
         
         if (success) {
           console.log('✅ 전략 생성 성공');
           
-          // 2️⃣ 잠시 기다려서 currentStrategy가 업데이트되도록 함
+          // 5️⃣ 잠시 기다려서 currentStrategy가 업데이트되도록 함
           await new Promise(resolve => setTimeout(resolve, 100));
           
-          // 3️⃣ 현재 전략 확인
-          const latestStrategy = this.currentStrategy
+          // 6️⃣ 현재 전략 확인
+          const latestStrategy = this.currentStrategy;
           console.log('📊 생성된 전략:', latestStrategy);
           
           if (latestStrategy && latestStrategy.id) {
             console.log('🚀 자동매매 시작 중...', latestStrategy.id);
             
-            // 4️⃣ 자동매매 시작
-            const startSuccess = await this.startTrading(latestStrategy.id)
+            // 7️⃣ 자동매매 시작 (시장 상태는 서버에서 재확인)
+            const startSuccess = await this.startTrading(latestStrategy.id);
             
             if (startSuccess) {
               console.log('✅ 자동매매 시작 성공!');
               
-              // 5️⃣ 상태 강제 새로고침
-              await this.loadTradingStatus()
+              // 8️⃣ 상태 강제 새로고침
+              await this.loadTradingStatus();
+              await this.loadMarketStatus(); // 시장 상태도 새로고침
               
               if (this.$toast) {
-                this.$toast.success('자동매매가 시작되었습니다!');
+                this.$toast.success('🟢 시장이 열려있어 자동매매가 시작되었습니다!');
               }
             } else {
-              console.error('❌ 자동매매 시작 실패');
+              console.error('❌ 자동매매 시작 실패 - 서버에서 거부됨');
+              
+              // 시장 상태 재확인
+              await this.loadMarketStatus();
+              
+              if (this.$toast) {
+                this.$toast.error('자동매매 시작이 거부되었습니다. 시장 상태를 확인해주세요.');
+              }
             }
           } else {
             console.error('❌ 현재 전략을 찾을 수 없음:', latestStrategy);
@@ -562,13 +721,27 @@ export default {
         }
       } catch (error) {
         console.error('❌ handleStartTrading 전체 오류:', error);
-        if (this.$toast) {
-          this.$toast.error('자동매매 시작 중 오류가 발생했습니다.');
+        
+        if (error.response && error.response.data && error.response.data.message) {
+          // 서버에서 온 구체적인 오류 메시지 표시
+          console.error('서버 오류 메시지:', error.response.data.message);
+          
+          if (this.$toast) {
+            this.$toast.error(error.response.data.message);
+          }
+          
+          // 시장 상태 관련 오류면 상태 새로고침
+          if (error.response.data.reason === 'MARKET_CLOSED') {
+            await this.loadMarketStatus();
+          }
+        } else {
+          if (this.$toast) {
+            this.$toast.error('자동매매 시작 중 오류가 발생했습니다.');
+          }
         }
       }
     },
 
-    // TradingStrategy.vue의 handleStopTrading 메서드를 이것으로 교체
     async handleStopTrading() {
       try {
         console.log('⏹️ 자동매매 중단 요청 시작');
@@ -640,11 +813,28 @@ export default {
           maximumFractionDigits: 2
         })
       }
+    },
+
+    formatDateTime(dateString) {
+      if (!dateString) return '-';
+      
+      try {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return '-';
+        
+        return date.toLocaleString('ko-KR', {
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      } catch (error) {
+        return dateString;
+      }
     }
   }
 }
 </script>
-
 <style scoped>
 .strategy-form {
   max-width: 900px;
@@ -697,248 +887,17 @@ export default {
   background-color: rgba(244, 67, 54, 0.05);
 }
 
-.region-options {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--spacing-md);
-  margin-top: var(--spacing-sm);
+.market-icon {
+  font-size: 2rem;
+  margin-bottom: var(--spacing-sm);
 }
 
-.region-option {
-  cursor: pointer;
-}
-
-.region-radio {
-  display: none;
-}
-
-.region-card {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-md);
-  border: 2px solid var(--border-light);
-  border-radius: var(--border-radius-md);
-  transition: all var(--transition-fast);
-  background-color: var(--white);
-}
-
-.region-card:hover {
-  border-color: var(--primary-color);
-}
-
-.region-radio:checked + .region-card {
-  border-color: var(--primary-color);
-  background-color: rgba(25, 118, 210, 0.05);
-}
-
-.region-flag {
-  font-size: 1.2rem;
-}
-
-.balance-info {
-  background-color: var(--bg-secondary);
-  border-radius: var(--border-radius-md);
-  padding: var(--spacing-md);
-  margin-top: var(--spacing-sm);
-}
-
-.balance-loading,
-.balance-error {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  color: var(--text-secondary);
-}
-
-.balance-display {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
-}
-
-.balance-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.balance-label {
-  font-size: var(--font-sm);
-  color: var(--text-secondary);
-}
-
-.balance-value {
+.market-label {
+  font-size: var(--font-md);
   font-weight: var(--font-medium);
   color: var(--text-primary);
+  margin-bottom: var(--spacing-sm);
 }
-
-.balance-value.available {
-  color: var(--success-color);
-  font-weight: var(--font-bold);
-}
-
-.stocks-container {
-  border: 1px solid var(--border-light);
-  border-radius: var(--border-radius-md);
-  padding: var(--spacing-md);
-  background-color: var(--bg-secondary);
-}
-
-.stock-item {
-  margin-bottom: var(--spacing-md);
-}
-
-.stock-inputs {
-  display: grid;
-  grid-template-columns: 1fr 1.5fr 120px 40px;
-  gap: var(--spacing-sm);
-  align-items: center;
-}
-
-.allocation-input-group {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  min-width: 120px; /* 최소 너비 보장 */
-}
-
-.allocation-input {
-  width: 85px; /* 80px → 85px로 증가 */
-  text-align: center;
-  font-size: var(--font-md);
-  padding: var(--spacing-sm);
-  min-width: 85px; /* 최소 너비도 함께 증가 */
-}
-
-.allocation-unit {
-  font-weight: var(--font-medium);
-  color: var(--text-secondary);
-  font-size: var(--font-md);
-  min-width: 20px; /* % 기호가 잘리지 않도록 */
-  flex-shrink: 0; /* 축소되지 않도록 */
-}
-
-.btn-remove {
-  background: var(--error-color);
-  color: var(--white);
-  border: none;
-  border-radius: 50%;
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-size: var(--font-lg);
-  line-height: 1;
-}
-
-.validation-loading {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-xs);
-  margin-top: var(--spacing-xs);
-  font-size: var(--font-sm);
-  color: var(--text-secondary);
-}
-
-.stock-price {
-  margin-top: var(--spacing-xs);
-  font-size: var(--font-sm);
-  color: var(--success-color);
-  font-weight: var(--font-medium);
-}
-
-.add-stock-btn {
-  width: 100%;
-  margin-bottom: var(--spacing-md);
-}
-
-.allocation-summary {
-  text-align: center;
-  padding: var(--spacing-sm);
-  background-color: var(--white);
-  border-radius: var(--border-radius-sm);
-}
-
-.total-allocation {
-  font-weight: var(--font-medium);
-  color: var(--success-color);
-}
-
-.total-allocation.over-100 {
-  color: var(--error-color);
-}
-
-.allocation-warning {
-  font-size: var(--font-sm);
-  color: var(--error-color);
-  margin-left: var(--spacing-sm);
-}
-
-.allocation-info {
-  font-size: var(--font-sm);
-  color: var(--text-secondary);
-  margin-left: var(--spacing-sm);
-}
-
-.strategy-actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.trading-status {
-  display: flex;
-  align-items: center;
-}
-
-.status-indicator {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  font-weight: var(--font-medium);
-  font-size: var(--font-sm);
-}
-
-.status-indicator.active {
-  color: var(--success-color);
-}
-
-.status-indicator.inactive {
-  color: var(--gray);
-}
-
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background-color: currentColor;
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0% { opacity: 1; }
-  50% { opacity: 0.5; }
-  100% { opacity: 1; }
-}
-
-.action-buttons {
-  display: flex;
-  gap: var(--spacing-sm);
-}
-
-.loading-spinner {
-  width: 16px;
-  height: 16px;
-  border: 2px solid var(--border-light);
-  border-radius: 50%;
-  border-top-color: var(--primary-color);
-  animation: spin 1s ease-in-out infinite;
-}
-
-/* 기존 CSS에 추가할 새로운 스타일들 */
 
 .market-desc {
   font-size: var(--font-sm);
@@ -958,6 +917,7 @@ export default {
   gap: var(--spacing-xs);
   margin-top: var(--spacing-sm);
   flex-wrap: wrap;
+  justify-content: center;
 }
 
 .indicator {
@@ -1069,6 +1029,419 @@ export default {
   color: var(--warning-color);
 }
 
+.region-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-sm);
+}
+
+.region-option {
+  cursor: pointer;
+}
+
+.region-radio {
+  display: none;
+}
+
+.region-card {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  border: 2px solid var(--border-light);
+  border-radius: var(--border-radius-md);
+  transition: all var(--transition-fast);
+  background-color: var(--white);
+}
+
+.region-card:hover {
+  border-color: var(--primary-color);
+}
+
+.region-radio:checked + .region-card {
+  border-color: var(--primary-color);
+  background-color: rgba(25, 118, 210, 0.05);
+}
+
+.region-flag {
+  font-size: 1.2rem;
+}
+
+/* 시장 상태 정보 스타일 */
+.market-status-info {
+  background-color: var(--bg-secondary);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-md);
+  margin-top: var(--spacing-sm);
+}
+
+.market-status-loading,
+.market-status-error {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  color: var(--text-secondary);
+  justify-content: center;
+}
+
+.market-status-display {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+}
+
+.market-status-item {
+  flex: 1;
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-xs);
+}
+
+.status-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-dot.open {
+  background-color: var(--success-color);
+  animation: pulse-green 2s infinite;
+}
+
+.status-dot.closed {
+  background-color: var(--error-color);
+}
+
+.status-text {
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+  font-size: var(--font-sm);
+}
+
+.market-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-left: calc(12px + var(--spacing-sm)); /* status-dot 크기 + gap */
+}
+
+.market-details small {
+  font-size: var(--font-xs);
+  color: var(--text-secondary);
+}
+
+/* API 소스 표시 */
+.api-source {
+  font-size: var(--font-xs);
+  color: var(--success-color);
+  font-weight: var(--font-medium);
+}
+
+.api-info {
+  font-weight: var(--font-medium);
+}
+
+.check-time {
+  color: var(--gray);
+}
+
+.error-info {
+  color: var(--error-color);
+  font-weight: var(--font-medium);
+}
+
+.status-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.refresh-btn {
+  white-space: nowrap;
+  align-self: flex-start;
+}
+
+.auto-refresh-info {
+  font-size: 10px;
+  color: var(--gray);
+  text-align: center;
+}
+
+/* 강화된 경고 메시지 */
+.market-warning.enhanced {
+  background-color: rgba(244, 67, 54, 0.1);
+  border: 2px solid var(--error-color);
+  box-shadow: 0 2px 8px rgba(244, 67, 54, 0.2);
+}
+
+.warning-notice {
+  font-size: var(--font-xs);
+  color: var(--error-color);
+  font-weight: var(--font-medium);
+  margin-top: var(--spacing-xs);
+}
+
+/* 시장 개장 성공 메시지 */
+.market-success {
+  display: flex;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background-color: rgba(76, 175, 80, 0.1);
+  border-radius: var(--border-radius-md);
+  border: 2px solid var(--success-color);
+  margin-top: var(--spacing-md);
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.2);
+}
+
+.success-icon {
+  font-size: var(--font-lg);
+  flex-shrink: 0;
+}
+
+.success-content {
+  flex: 1;
+}
+
+.success-content strong {
+  color: var(--success-color);
+  font-size: var(--font-sm);
+  display: block;
+  margin-bottom: var(--spacing-xs);
+}
+
+.success-content p {
+  font-size: var(--font-xs);
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.success-notice {
+  font-size: var(--font-xs);
+  color: var(--success-color);
+  font-weight: var(--font-medium);
+  margin-top: var(--spacing-xs);
+}
+
+.balance-info {
+  background-color: var(--bg-secondary);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-md);
+  margin-top: var(--spacing-sm);
+}
+
+.balance-loading,
+.balance-error {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  color: var(--text-secondary);
+}
+
+.balance-display {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.balance-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.balance-label {
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+}
+
+.balance-value {
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+}
+
+.balance-value.available {
+  color: var(--success-color);
+  font-weight: var(--font-bold);
+}
+
+.stocks-container {
+  border: 1px solid var(--border-light);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-md);
+  background-color: var(--bg-secondary);
+}
+
+.stock-item {
+  margin-bottom: var(--spacing-md);
+}
+
+.stock-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr 120px 40px;
+  gap: var(--spacing-sm);
+  align-items: center;
+}
+
+.allocation-input-group {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  min-width: 120px;
+}
+
+.allocation-input {
+  width: 85px;
+  text-align: center;
+  font-size: var(--font-md);
+  padding: var(--spacing-sm);
+  min-width: 85px;
+}
+
+.allocation-unit {
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+  font-size: var(--font-md);
+  min-width: 20px;
+  flex-shrink: 0;
+}
+
+.btn-remove {
+  background: var(--error-color);
+  color: var(--white);
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: var(--font-lg);
+  line-height: 1;
+}
+
+.validation-loading {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-xs);
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+}
+
+.stock-price {
+  margin-top: var(--spacing-xs);
+  font-size: var(--font-sm);
+  color: var(--success-color);
+  font-weight: var(--font-medium);
+}
+
+.add-stock-btn {
+  width: 100%;
+  margin-bottom: var(--spacing-md);
+}
+
+.allocation-summary {
+  text-align: center;
+  padding: var(--spacing-sm);
+  background-color: var(--white);
+  border-radius: var(--border-radius-sm);
+}
+
+.total-allocation {
+  font-weight: var(--font-medium);
+  color: var(--success-color);
+}
+
+.total-allocation.over-100 {
+  color: var(--error-color);
+}
+
+.allocation-warning {
+  font-size: var(--font-sm);
+  color: var(--error-color);
+  margin-left: var(--spacing-sm);
+}
+
+.allocation-info {
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+  margin-left: var(--spacing-sm);
+}
+
+.strategy-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.trading-status {
+  display: flex;
+  align-items: center;
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-weight: var(--font-medium);
+  font-size: var(--font-sm);
+}
+
+.status-indicator.active {
+  color: var(--success-color);
+}
+
+.status-indicator.inactive {
+  color: var(--gray);
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: currentColor;
+  animation: pulse 2s infinite;
+}
+
+.action-buttons {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border-light);
+  border-radius: 50%;
+  border-top-color: var(--primary-color);
+  animation: spin 1s ease-in-out infinite;
+}
+
+/* 자동매매 시작 버튼 상태별 스타일 */
+.btn[disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.btn:disabled::after {
+  content: ' (시장 마감)';
+  font-size: var(--font-xs);
+  color: var(--error-color);
+}
+
+/* 애니메이션 */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -1080,8 +1453,35 @@ export default {
   }
 }
 
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+@keyframes pulse-green {
+  0% {
+    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(76, 175, 80, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0);
+  }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 /* 모바일 반응형 */
 @media (max-width: 768px) {
+  .market-options,
+  .region-options {
+    grid-template-columns: 1fr;
+  }
+  
   .strategy-explanation {
     grid-template-columns: 1fr;
     gap: var(--spacing-md);
@@ -1111,21 +1511,26 @@ export default {
     text-align: center;
   }
   
-  .strategy-warning {
+  .strategy-warning,
+  .market-warning,
+  .market-success {
     flex-direction: column;
     text-align: center;
   }
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* 모바일 반응형 */
-@media (max-width: 768px) {
-  .market-options,
-  .region-options {
-    grid-template-columns: 1fr;
+  
+  .market-status-display {
+    flex-direction: column;
+    gap: var(--spacing-sm);
+  }
+  
+  .refresh-btn {
+    align-self: center;
+    width: 100%;
+  }
+  
+  .market-details {
+    margin-left: 0;
+    text-align: center;
   }
   
   .balance-item {

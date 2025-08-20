@@ -203,9 +203,9 @@ router.afterEach((to, from, failure) => {
   } else {
     console.log('✅ 라우터 이동 완료:', to.path)
     
-    // 페이지 방문 추적 (Google Analytics 등)
-    if (typeof gtag !== 'undefined') {
-      gtag('config', 'GA_TRACKING_ID', {
+    // 페이지 방문 추적 (Google Analytics 등) - gtag가 정의된 경우만
+    if (typeof window !== 'undefined' && window.gtag) {
+      window.gtag('config', 'GA_TRACKING_ID', {
         page_path: to.path,
         page_title: to.meta.title
       })

@@ -1,19 +1,20 @@
+<!-- eslint-disable vue/multi-word-component-names -->
 <template>
-  <div class="trading">
+  <div class="trading-page">
     <div class="container">
-      <!-- 상단 헤더 -->
-      <div class="trading-header">
+      <!-- 페이지 헤더 -->
+      <div class="page-header">
         <h1 class="page-title">한국투자증권 자동매매</h1>
-        <div class="account-info">
-          <div class="account-card">
-            <span class="account-label">계좌번호:</span>
-            <span class="account-number">{{ accountInfo.accountNo }}</span>
+        <div class="account-summary">
+          <div class="account-item">
+            <span class="label">계좌번호</span>
+            <span class="value">{{ accountInfo.accountNo }}</span>
           </div>
-          <div class="balance-card">
-            <span class="balance-label">현재 잔고:</span>
-            <span class="balance-amount">{{ formatMoney(accountInfo.balance) }}원</span>
+          <div class="account-item">
+            <span class="label">현재 잔고</span>
+            <span class="value balance">{{ formatMoney(accountInfo.balance) }}원</span>
           </div>
-          <button @click="refreshAccountInfo" class="btn btn-sm btn-outline">
+          <button @click="refreshAccount" class="refresh-btn">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
               <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
             </svg>
@@ -22,326 +23,322 @@
         </div>
       </div>
 
-      <!-- 탭 네비게이션 -->
-      <div class="tab-navigation">
+      <!-- 탭 메뉴 -->
+      <div class="tab-menu">
         <button 
           @click="activeTab = 'domestic'"
-          :class="['tab-button', { active: activeTab === 'domestic' }]"
+          :class="['tab-btn', { active: activeTab === 'domestic' }]"
         >
           국내투자
         </button>
         <button 
           @click="activeTab = 'overseas'"
-          :class="['tab-button', { active: activeTab === 'overseas' }]"
+          :class="['tab-btn', { active: activeTab === 'overseas' }]"
         >
           해외투자
         </button>
       </div>
 
-      <!-- 국내투자 탭 -->
-      <div v-if="activeTab === 'domestic'" class="trading-content">
-        <div class="trading-grid">
-          <!-- 전략 선택 -->
-          <div class="strategy-section card">
-            <div class="card-header">
-              <h3 class="card-title">매매 전략 선택</h3>
-            </div>
-            <div class="card-body">
-              <div class="strategy-grid">
-                <div 
-                  v-for="strategy in strategies" 
-                  :key="strategy.id"
-                  @click="selectStrategy(strategy)"
-                  :class="['strategy-card', { selected: selectedStrategy?.id === strategy.id }]"
-                >
-                  <div class="strategy-icon">{{ strategy.icon }}</div>
-                  <h4 class="strategy-name">{{ strategy.name }}</h4>
-                  <p class="strategy-description">{{ strategy.description }}</p>
-                  <div class="strategy-stats">
-                    <span class="stat-item">수익률: {{ strategy.expectedReturn }}</span>
-                    <span class="stat-item">위험도: {{ strategy.riskLevel }}</span>
-                  </div>
-                </div>
-              </div>
-              
-              <!-- 선택된 전략 상세 정보 -->
-              <div v-if="selectedStrategy" class="strategy-details">
-                <h4>{{ selectedStrategy.name }} 상세 설정</h4>
-                <div class="strategy-params">
-                  <div v-for="param in selectedStrategy.parameters" :key="param.key" class="param-group">
-                    <label :for="param.key" class="form-label">{{ param.label }}</label>
-                    <input 
-                      :id="param.key"
-                      v-model="strategyParams[param.key]"
-                      :type="param.type"
-                      :min="param.min"
-                      :max="param.max"
-                      :step="param.step"
-                      class="form-input"
-                      :placeholder="param.placeholder"
-                    >
-                    <small class="param-description">{{ param.description }}</small>
-                  </div>
-                </div>
+      <!-- 국내투자 탭 내용 -->
+      <div v-if="activeTab === 'domestic'" class="tab-content">
+        
+        <!-- 전략 선택 섹션 -->
+        <section class="strategy-section">
+          <div class="section-header">
+            <h2 class="section-title">매매 전략 선택</h2>
+          </div>
+          <div class="strategy-cards">
+            <div 
+              v-for="strategy in tradingStrategies" 
+              :key="strategy.id"
+              @click="selectStrategy(strategy)"
+              :class="['strategy-card', { selected: selectedStrategy?.id === strategy.id }]"
+            >
+              <div class="strategy-icon">{{ strategy.icon }}</div>
+              <h3 class="strategy-name">{{ strategy.name }}</h3>
+              <p class="strategy-desc">{{ strategy.description }}</p>
+              <div class="strategy-stats">
+                <span class="stat">수익률: {{ strategy.expectedReturn }}</span>
+                <span class="stat">위험도: {{ strategy.riskLevel }}</span>
               </div>
             </div>
           </div>
 
-          <!-- 종목 선택 -->
-          <div class="stocks-section card">
-            <div class="card-header">
-              <h3 class="card-title">AI 추천 종목</h3>
-              <button @click="getAIRecommendations" class="btn btn-sm btn-primary">
-                AI 재추천
-              </button>
-            </div>
-            <div class="card-body">
-              <div v-if="loadingRecommendations" class="loading-state">
-                <div class="loading-spinner"></div>
-                <p>AI가 종목을 분석하고 있습니다...</p>
-              </div>
-              
-              <div v-else class="stocks-grid">
-                <div 
-                  v-for="stock in recommendedStocks" 
-                  :key="stock.code"
-                  :class="['stock-card', { selected: selectedStocks.includes(stock.code) }]"
-                  @click="toggleStock(stock.code)"
+          <!-- 선택된 전략 설정 -->
+          <div v-if="selectedStrategy" class="strategy-config">
+            <h3>{{ selectedStrategy.name }} 상세 설정</h3>
+            <div class="config-grid">
+              <div v-for="param in selectedStrategy.parameters" :key="param.key" class="config-item">
+                <label :for="param.key">{{ param.label }}</label>
+                <input 
+                  :id="param.key"
+                  v-model="strategyParams[param.key]"
+                  :type="param.type"
+                  :min="param.min"
+                  :max="param.max"
+                  :step="param.step"
+                  :placeholder="param.placeholder"
+                  class="config-input"
                 >
-                  <div class="stock-header">
-                    <h4 class="stock-name">{{ stock.name }}</h4>
-                    <span class="stock-code">{{ stock.code }}</span>
-                  </div>
-                  <div class="stock-price">
-                    <span class="current-price">{{ formatMoney(stock.currentPrice) }}원</span>
-                    <span :class="['price-change', stock.changeRate >= 0 ? 'positive' : 'negative']">
-                      {{ stock.changeRate >= 0 ? '+' : '' }}{{ stock.changeRate }}%
-                    </span>
-                  </div>
-                  <div class="stock-reason">
-                    <small>{{ stock.aiReason }}</small>
-                  </div>
-                  <div class="checkbox-wrapper">
-                    <input 
-                      type="checkbox" 
-                      :checked="selectedStocks.includes(stock.code)"
-                      @click.stop="toggleStock(stock.code)"
-                    >
-                  </div>
-                </div>
+                <small class="config-help">{{ param.description }}</small>
               </div>
-              
-              <!-- 사용자 정의 종목 추가 -->
-              <div class="custom-stock">
-                <h4>직접 종목 추가</h4>
-                <div class="stock-search">
-                  <input 
-                    v-model="searchKeyword"
-                    @keypress.enter="searchStock"
-                    placeholder="종목명 또는 종목코드 입력"
-                    class="form-input"
-                  >
-                  <button @click="searchStock" class="btn btn-primary">검색</button>
-                </div>
-                <div v-if="searchResults.length" class="search-results">
-                  <div 
-                    v-for="stock in searchResults" 
-                    :key="stock.code"
-                    @click="addCustomStock(stock)"
-                    class="search-result-item"
-                  >
-                    <span class="stock-name">{{ stock.name }}</span>
-                    <span class="stock-code">{{ stock.code }}</span>
-                  </div>
-                </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- AI 추천 종목 섹션 -->
+        <section class="stocks-section">
+          <div class="section-header">
+            <h2 class="section-title">AI 추천 종목</h2>
+            <button @click="getRecommendations" class="recommend-btn">
+              AI 재추천
+            </button>
+          </div>
+
+          <div v-if="loadingStocks" class="loading-stocks">
+            <div class="spinner"></div>
+            <p>AI가 최적의 종목을 분석하고 있습니다...</p>
+          </div>
+
+          <div v-else class="stocks-grid">
+            <div 
+              v-for="stock in recommendedStocks" 
+              :key="stock.code"
+              @click="toggleStock(stock.code)"
+              :class="['stock-card', { selected: selectedStocks.includes(stock.code) }]"
+            >
+              <div class="stock-info">
+                <h3 class="stock-name">{{ stock.name }}</h3>
+                <span class="stock-code">{{ stock.code }}</span>
+              </div>
+              <div class="stock-price">
+                <span class="current-price">{{ formatMoney(stock.currentPrice) }}원</span>
+                <span :class="['price-change', stock.changeRate >= 0 ? 'up' : 'down']">
+                  {{ stock.changeRate >= 0 ? '+' : '' }}{{ stock.changeRate }}%
+                </span>
+              </div>
+              <div class="ai-reason">
+                <small>{{ stock.aiReason }}</small>
+              </div>
+              <div class="stock-checkbox">
+                <input 
+                  type="checkbox" 
+                  :checked="selectedStocks.includes(stock.code)"
+                  @click.stop="toggleStock(stock.code)"
+                >
               </div>
             </div>
           </div>
 
-          <!-- 자동매매 제어 -->
-          <div class="control-section card">
-            <div class="card-header">
-              <h3 class="card-title">자동매매 제어</h3>
-              <div class="trading-status">
-                <span :class="['status-indicator', tradingStatus]"></span>
-                <span class="status-text">{{ getStatusText() }}</span>
-              </div>
+          <!-- 직접 종목 추가 -->
+          <div class="add-stock">
+            <h3>직접 종목 추가</h3>
+            <div class="search-stock">
+              <input 
+                v-model="stockKeyword"
+                @keypress.enter="searchStocks"
+                placeholder="종목명 또는 코드 입력 (예: 삼성전자, 005930)"
+                class="search-input"
+              >
+              <button @click="searchStocks" class="search-btn">검색</button>
             </div>
-            <div class="card-body">
-              <div class="control-settings">
-                <div class="form-group">
-                  <label class="form-label">투자 금액</label>
-                  <input 
-                    v-model="investmentAmount"
-                    type="number"
-                    min="10000"
-                    :max="accountInfo.balance"
-                    step="10000"
-                    class="form-input"
-                    placeholder="최소 10,000원"
-                  >
-                  <small>사용 가능 잔고: {{ formatMoney(accountInfo.balance) }}원</small>
-                </div>
-                
-                <div class="form-group">
-                  <label class="form-label">종목별 배분</label>
-                  <select v-model="allocationMethod" class="form-select">
-                    <option value="equal">균등 배분</option>
-                    <option value="weighted">가중 배분 (AI 신뢰도 기반)</option>
-                    <option value="custom">사용자 정의</option>
-                  </select>
-                </div>
-
-                <div class="form-group">
-                  <label class="form-label">손절 기준</label>
-                  <input 
-                    v-model="stopLossPercent"
-                    type="number"
-                    min="1"
-                    max="30"
-                    step="0.1"
-                    class="form-input"
-                    placeholder="예: 5 (-5% 하락 시 손절)"
-                  >
-                  <small>%</small>
-                </div>
-
-                <div class="form-group">
-                  <label class="form-label">익절 기준</label>
-                  <input 
-                    v-model="takeProfitPercent"
-                    type="number"
-                    min="1"
-                    max="100"
-                    step="0.1"
-                    class="form-input"
-                    placeholder="예: 10 (+10% 상승 시 익절)"
-                  >
-                  <small>%</small>
-                </div>
-              </div>
-              
-              <div class="control-buttons">
-                <button 
-                  @click="startTrading"
-                  :disabled="!canStartTrading"
-                  class="btn btn-success btn-lg"
-                >
-                  자동매매 시작
-                </button>
-                <button 
-                  @click="stopTrading"
-                  :disabled="tradingStatus !== 'running'"
-                  class="btn btn-danger btn-lg"
-                >
-                  자동매매 중지
-                </button>
-                <button 
-                  @click="pauseTrading"
-                  :disabled="tradingStatus !== 'running'"
-                  class="btn btn-warning btn-lg"
-                >
-                  일시정지
-                </button>
+            <div v-if="searchResults.length" class="search-results">
+              <div 
+                v-for="stock in searchResults" 
+                :key="stock.code"
+                @click="addStock(stock)"
+                class="search-result"
+              >
+                <span class="result-name">{{ stock.name }}</span>
+                <span class="result-code">{{ stock.code }}</span>
               </div>
             </div>
           </div>
+        </section>
 
-          <!-- 현재 포지션 -->
-          <div class="positions-section card">
-            <div class="card-header">
-              <h3 class="card-title">현재 포지션</h3>
-              <button @click="refreshPositions" class="btn btn-sm btn-outline">새로고침</button>
-            </div>
-            <div class="card-body">
-              <div v-if="currentPositions.length === 0" class="empty-state">
-                <p>현재 보유 중인 종목이 없습니다.</p>
-              </div>
-              <div v-else class="positions-grid">
-                <div v-for="position in currentPositions" :key="position.code" class="position-card">
-                  <div class="position-header">
-                    <h4 class="stock-name">{{ position.name }}</h4>
-                    <span class="stock-code">{{ position.code }}</span>
-                  </div>
-                  <div class="position-details">
-                    <div class="detail-row">
-                      <span class="label">보유 수량:</span>
-                      <span class="value">{{ position.quantity }}주</span>
-                    </div>
-                    <div class="detail-row">
-                      <span class="label">평균 매입가:</span>
-                      <span class="value">{{ formatMoney(position.avgPrice) }}원</span>
-                    </div>
-                    <div class="detail-row">
-                      <span class="label">현재가:</span>
-                      <span class="value">{{ formatMoney(position.currentPrice) }}원</span>
-                    </div>
-                    <div class="detail-row">
-                      <span class="label">평가손익:</span>
-                      <span :class="['value', position.pnl >= 0 ? 'positive' : 'negative']">
-                        {{ position.pnl >= 0 ? '+' : '' }}{{ formatMoney(position.pnl) }}원
-                        ({{ position.pnlPercent >= 0 ? '+' : '' }}{{ position.pnlPercent }}%)
-                      </span>
-                    </div>
-                  </div>
-                  <button @click="sellPosition(position)" class="btn btn-sm btn-danger">
-                    전량 매도
-                  </button>
-                </div>
-              </div>
+        <!-- 자동매매 제어 섹션 -->
+        <section class="control-section">
+          <div class="section-header">
+            <h2 class="section-title">자동매매 제어</h2>
+            <div class="trading-status">
+              <div :class="['status-dot', tradingStatus]"></div>
+              <span class="status-text">{{ getStatusText() }}</span>
             </div>
           </div>
 
-          <!-- 매매 기록 -->
-          <div class="history-section card">
-            <div class="card-header">
-              <h3 class="card-title">최근 매매 기록</h3>
-              <select v-model="historyFilter" class="form-select" style="width: auto;">
-                <option value="today">오늘</option>
-                <option value="week">최근 1주</option>
-                <option value="month">최근 1개월</option>
+          <div class="control-grid">
+            <div class="control-group">
+              <label>투자 금액</label>
+              <input 
+                v-model="investAmount"
+                type="number"
+                min="10000"
+                :max="accountInfo.balance"
+                step="10000"
+                placeholder="최소 10,000원"
+                class="control-input"
+              >
+              <small>사용 가능: {{ formatMoney(accountInfo.balance) }}원</small>
+            </div>
+
+            <div class="control-group">
+              <label>배분 방식</label>
+              <select v-model="allocationMethod" class="control-select">
+                <option value="equal">균등 배분</option>
+                <option value="weighted">AI 가중 배분</option>
+                <option value="custom">사용자 정의</option>
               </select>
             </div>
-            <div class="card-body">
-              <div class="history-table">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>시간</th>
-                      <th>종목</th>
-                      <th>구분</th>
-                      <th>수량</th>
-                      <th>가격</th>
-                      <th>수수료</th>
-                      <th>상태</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="record in tradingHistory" :key="record.id">
-                      <td>{{ formatDateTime(record.timestamp) }}</td>
-                      <td>{{ record.stockName }}</td>
-                      <td :class="['trade-type', record.type]">{{ record.type === 'buy' ? '매수' : '매도' }}</td>
-                      <td>{{ record.quantity }}주</td>
-                      <td>{{ formatMoney(record.price) }}원</td>
-                      <td>{{ formatMoney(record.fee) }}원</td>
-                      <td :class="['status', record.status]">{{ getTradeStatusText(record.status) }}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+
+            <div class="control-group">
+              <label>손절 기준 (%)</label>
+              <input 
+                v-model="stopLoss"
+                type="number"
+                min="1"
+                max="30"
+                step="0.1"
+                placeholder="5"
+                class="control-input"
+              >
+              <small>하락 시 자동 매도</small>
+            </div>
+
+            <div class="control-group">
+              <label>익절 기준 (%)</label>
+              <input 
+                v-model="takeProfit"
+                type="number"
+                min="1"
+                max="100"
+                step="0.1"
+                placeholder="10"
+                class="control-input"
+              >
+              <small>상승 시 자동 매도</small>
             </div>
           </div>
+
+          <div class="control-buttons">
+            <button 
+              @click="startTrading"
+              :disabled="!canStart"
+              class="control-btn start-btn"
+            >
+              자동매매 시작
+            </button>
+            <button 
+              @click="stopTrading"
+              :disabled="tradingStatus !== 'running'"
+              class="control-btn stop-btn"
+            >
+              자동매매 중지
+            </button>
+            <button 
+              @click="pauseTrading"
+              :disabled="tradingStatus !== 'running'"
+              class="control-btn pause-btn"
+            >
+              일시정지
+            </button>
+          </div>
+        </section>
+
+        <!-- 현재 포지션 섹션 -->
+        <section class="positions-section">
+          <div class="section-header">
+            <h2 class="section-title">현재 포지션</h2>
+            <button @click="refreshPositions" class="refresh-btn">새로고침</button>
+          </div>
+
+          <div v-if="positions.length === 0" class="empty-positions">
+            <p>현재 보유 중인 종목이 없습니다.</p>
+          </div>
+
+          <div v-else class="positions-grid">
+            <div v-for="position in positions" :key="position.code" class="position-card">
+              <div class="position-header">
+                <h3 class="position-name">{{ position.name }}</h3>
+                <span class="position-code">{{ position.code }}</span>
+              </div>
+              <div class="position-details">
+                <div class="detail-row">
+                  <span>보유 수량</span>
+                  <span>{{ position.quantity }}주</span>
+                </div>
+                <div class="detail-row">
+                  <span>평균 매입가</span>
+                  <span>{{ formatMoney(position.avgPrice) }}원</span>
+                </div>
+                <div class="detail-row">
+                  <span>현재가</span>
+                  <span>{{ formatMoney(position.currentPrice) }}원</span>
+                </div>
+                <div class="detail-row">
+                  <span>평가손익</span>
+                  <span :class="['pnl', position.pnl >= 0 ? 'profit' : 'loss']">
+                    {{ position.pnl >= 0 ? '+' : '' }}{{ formatMoney(position.pnl) }}원
+                    ({{ position.pnlPercent >= 0 ? '+' : '' }}{{ position.pnlPercent }}%)
+                  </span>
+                </div>
+              </div>
+              <button @click="sellAll(position)" class="sell-btn">전량 매도</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- 거래 기록 섹션 -->
+        <section class="history-section">
+          <div class="section-header">
+            <h2 class="section-title">거래 기록</h2>
+            <select v-model="historyPeriod" @change="loadHistory" class="period-select">
+              <option value="today">오늘</option>
+              <option value="week">최근 1주</option>
+              <option value="month">최근 1개월</option>
+            </select>
+          </div>
+
+          <div class="history-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>시간</th>
+                  <th>종목</th>
+                  <th>구분</th>
+                  <th>수량</th>
+                  <th>가격</th>
+                  <th>상태</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="record in tradingHistory" :key="record.id">
+                  <td>{{ formatTime(record.timestamp) }}</td>
+                  <td>{{ record.stockName }}</td>
+                  <td :class="['trade-type', record.type]">
+                    {{ record.type === 'buy' ? '매수' : '매도' }}
+                  </td>
+                  <td>{{ record.quantity }}주</td>
+                  <td>{{ formatMoney(record.price) }}원</td>
+                  <td :class="['trade-status', record.status]">
+                    {{ getTradeStatus(record.status) }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- 해외투자 탭 내용 -->
+      <div v-if="activeTab === 'overseas'" class="tab-content">
+        <div class="coming-soon">
+          <div class="coming-icon">🚧</div>
+          <h2>해외투자 기능 준비 중</h2>
+          <p>미국 주식 자동매매 기능을 준비하고 있습니다.<br>곧 만나보실 수 있습니다!</p>
         </div>
       </div>
 
-      <!-- 해외투자 탭 -->
-      <div v-if="activeTab === 'overseas'" class="trading-content">
-        <div class="coming-soon">
-          <div class="coming-soon-icon">🚧</div>
-          <h2>해외투자 기능 준비 중</h2>
-          <p>해외투자 자동매매 기능은 현재 개발 중입니다.<br>곧 출시될 예정이니 조금만 기다려주세요!</p>
-        </div>
-      </div>
     </div>
   </div>
 </template>
@@ -351,7 +348,7 @@ import { mapGetters } from 'vuex'
 import apiClient from '@/utils/api'
 
 export default {
-  name: 'Trading',
+  name: 'TradingView',
   data() {
     return {
       activeTab: 'domestic',
@@ -362,18 +359,18 @@ export default {
         balance: 0
       },
       
-      // 전략 정보
-      strategies: [
+      // 전략 데이터
+      tradingStrategies: [
         {
           id: 'moving_average',
           name: '이동평균선 돌파',
           icon: '📈',
-          description: '단기 이동평균이 장기 이동평균을 상향 돌파할 때 매수',
+          description: '단기 이동평균이 장기 이동평균을 상향 돌파할 때 매수하는 전략',
           expectedReturn: '8-12%',
           riskLevel: '중간',
           parameters: [
             {
-              key: 'short_ma',
+              key: 'short_period',
               label: '단기 이동평균',
               type: 'number',
               min: 5,
@@ -383,7 +380,7 @@ export default {
               description: '단기 이동평균 기간 (일)'
             },
             {
-              key: 'long_ma',
+              key: 'long_period',
               label: '장기 이동평균',
               type: 'number',
               min: 20,
@@ -393,8 +390,8 @@ export default {
               description: '장기 이동평균 기간 (일)'
             },
             {
-              key: 'volume_threshold',
-              label: '거래량 임계값',
+              key: 'volume_ratio',
+              label: '거래량 배수',
               type: 'number',
               min: 1.0,
               max: 5.0,
@@ -405,10 +402,10 @@ export default {
           ]
         },
         {
-          id: 'rsi_reversal',
+          id: 'rsi_strategy',
           name: 'RSI 역추세',
           icon: '🔄',
-          description: 'RSI 과매도/과매수 구간에서의 역추세 매매',
+          description: 'RSI 과매도/과매수 구간에서 역추세를 노리는 전략',
           expectedReturn: '10-15%',
           riskLevel: '높음',
           parameters: [
@@ -423,7 +420,7 @@ export default {
               description: 'RSI 계산 기간 (일)'
             },
             {
-              key: 'oversold_level',
+              key: 'oversold',
               label: '과매도 기준',
               type: 'number',
               min: 20,
@@ -433,7 +430,7 @@ export default {
               description: 'RSI 과매도 기준값'
             },
             {
-              key: 'overbought_level',
+              key: 'overbought',
               label: '과매수 기준',
               type: 'number',
               min: 65,
@@ -445,10 +442,10 @@ export default {
           ]
         },
         {
-          id: 'bollinger_squeeze',
-          name: '볼린저 밴드 수축',
+          id: 'bollinger_strategy',
+          name: '볼린저 밴드',
           icon: '🎯',
-          description: '볼린저 밴드 수축 후 확장 시점을 노린 매매',
+          description: '볼린저 밴드 수축 후 확장 시점을 포착하는 전략',
           expectedReturn: '12-18%',
           riskLevel: '중간',
           parameters: [
@@ -463,18 +460,18 @@ export default {
               description: '볼린저 밴드 계산 기간 (일)'
             },
             {
-              key: 'bb_std',
-              label: '표준편차 배수',
+              key: 'bb_deviation',
+              label: '표준편차',
               type: 'number',
               min: 1.5,
               max: 2.5,
               step: 0.1,
               placeholder: '2.0',
-              description: '볼린저 밴드 표준편차 배수'
+              description: '표준편차 배수'
             },
             {
               key: 'squeeze_threshold',
-              label: '수축 임계값',
+              label: '수축 기준',
               type: 'number',
               min: 0.1,
               max: 0.5,
@@ -489,35 +486,38 @@ export default {
       selectedStrategy: null,
       strategyParams: {},
       
-      // 종목 정보
+      // 종목 데이터
       recommendedStocks: [],
       selectedStocks: [],
-      loadingRecommendations: false,
-      searchKeyword: '',
+      loadingStocks: false,
+      stockKeyword: '',
       searchResults: [],
       
       // 매매 제어
       tradingStatus: 'stopped', // stopped, running, paused
-      investmentAmount: 1000000,
+      investAmount: 1000000,
       allocationMethod: 'equal',
-      stopLossPercent: 5,
-      takeProfitPercent: 10,
+      stopLoss: 5,
+      takeProfit: 10,
       
-      // 포지션 및 기록
-      currentPositions: [],
+      // 포지션과 기록
+      positions: [],
       tradingHistory: [],
-      historyFilter: 'today'
+      historyPeriod: 'today',
+      
+      // 업데이트 인터벌
+      updateTimer: null
     }
   },
   
   computed: {
     ...mapGetters('auth', ['isAuthenticated']),
     
-    canStartTrading() {
+    canStart() {
       return this.selectedStrategy && 
              this.selectedStocks.length > 0 && 
-             this.investmentAmount >= 10000 &&
-             this.investmentAmount <= this.accountInfo.balance &&
+             this.investAmount >= 10000 &&
+             this.investAmount <= this.accountInfo.balance &&
              this.tradingStatus === 'stopped'
     }
   },
@@ -528,36 +528,42 @@ export default {
       return
     }
     
-    await this.initializeTrading()
+    await this.initialize()
+  },
+  
+  beforeUnmount() {
+    if (this.updateTimer) {
+      clearInterval(this.updateTimer)
+    }
   },
   
   methods: {
-    async initializeTrading() {
+    async initialize() {
       try {
         await Promise.all([
-          this.refreshAccountInfo(),
-          this.getAIRecommendations(),
+          this.refreshAccount(),
+          this.getRecommendations(),
           this.refreshPositions(),
-          this.loadTradingHistory()
+          this.loadHistory()
         ])
       } catch (error) {
-        console.error('매매 초기화 실패:', error)
-        this.$toast.error('매매 시스템 초기화에 실패했습니다.')
+        console.error('초기화 실패:', error)
+        this.$toast.error('시스템 초기화에 실패했습니다.')
       }
     },
     
-    async refreshAccountInfo() {
+    async refreshAccount() {
       try {
         const response = await apiClient.get('/trading/account')
         this.accountInfo = response.data.data
       } catch (error) {
-        console.error('계좌 정보 조회 실패:', error)
+        console.error('계좌 조회 실패:', error)
         this.$toast.error('계좌 정보를 조회할 수 없습니다.')
       }
     },
     
-    async getAIRecommendations() {
-      this.loadingRecommendations = true
+    async getRecommendations() {
+      this.loadingStocks = true
       try {
         const response = await apiClient.get('/trading/ai-recommendations')
         this.recommendedStocks = response.data.data
@@ -565,7 +571,7 @@ export default {
         console.error('AI 추천 실패:', error)
         this.$toast.error('AI 종목 추천을 받을 수 없습니다.')
       } finally {
-        this.loadingRecommendations = false
+        this.loadingStocks = false
       }
     },
     
@@ -573,7 +579,6 @@ export default {
       this.selectedStrategy = strategy
       this.strategyParams = {}
       
-      // 기본값 설정
       strategy.parameters.forEach(param => {
         this.strategyParams[param.key] = param.placeholder
       })
@@ -588,12 +593,12 @@ export default {
       }
     },
     
-    async searchStock() {
-      if (!this.searchKeyword.trim()) return
+    async searchStocks() {
+      if (!this.stockKeyword.trim()) return
       
       try {
         const response = await apiClient.get('/trading/search-stock', {
-          params: { keyword: this.searchKeyword }
+          params: { keyword: this.stockKeyword }
         })
         this.searchResults = response.data.data
       } catch (error) {
@@ -602,7 +607,7 @@ export default {
       }
     },
     
-    addCustomStock(stock) {
+    addStock(stock) {
       if (!this.recommendedStocks.find(s => s.code === stock.code)) {
         this.recommendedStocks.push({
           ...stock,
@@ -612,30 +617,28 @@ export default {
       }
       this.toggleStock(stock.code)
       this.searchResults = []
-      this.searchKeyword = ''
+      this.stockKeyword = ''
     },
     
     async startTrading() {
-      if (!this.canStartTrading) return
+      if (!this.canStart) return
       
       try {
-        const tradingConfig = {
+        const config = {
           strategy: this.selectedStrategy.id,
           strategyParams: this.strategyParams,
           stocks: this.selectedStocks,
-          investmentAmount: this.investmentAmount,
+          investmentAmount: this.investAmount,
           allocationMethod: this.allocationMethod,
-          stopLoss: this.stopLossPercent,
-          takeProfit: this.takeProfitPercent
+          stopLoss: this.stopLoss,
+          takeProfit: this.takeProfit
         }
         
-        await apiClient.post('/trading/start', tradingConfig)
+        await apiClient.post('/trading/start', config)
         this.tradingStatus = 'running'
         this.$toast.success('자동매매가 시작되었습니다!')
         
-        // 실시간 업데이트 시작
-        this.startRealTimeUpdates()
-        
+        this.startAutoUpdate()
       } catch (error) {
         console.error('자동매매 시작 실패:', error)
         this.$toast.error('자동매매 시작에 실패했습니다.')
@@ -648,9 +651,7 @@ export default {
         this.tradingStatus = 'stopped'
         this.$toast.success('자동매매가 중지되었습니다.')
         
-        // 실시간 업데이트 중지
-        this.stopRealTimeUpdates()
-        
+        this.stopAutoUpdate()
       } catch (error) {
         console.error('자동매매 중지 실패:', error)
         this.$toast.error('자동매매 중지에 실패했습니다.')
@@ -663,32 +664,32 @@ export default {
         this.tradingStatus = 'paused'
         this.$toast.info('자동매매가 일시정지되었습니다.')
       } catch (error) {
-        console.error('자동매매 일시정지 실패:', error)
-        this.$toast.error('자동매매 일시정지에 실패했습니다.')
+        console.error('일시정지 실패:', error)
+        this.$toast.error('일시정지에 실패했습니다.')
       }
     },
     
     async refreshPositions() {
       try {
         const response = await apiClient.get('/trading/positions')
-        this.currentPositions = response.data.data
+        this.positions = response.data.data
       } catch (error) {
         console.error('포지션 조회 실패:', error)
       }
     },
     
-    async loadTradingHistory() {
+    async loadHistory() {
       try {
         const response = await apiClient.get('/trading/history', {
-          params: { filter: this.historyFilter }
+          params: { filter: this.historyPeriod }
         })
         this.tradingHistory = response.data.data
       } catch (error) {
-        console.error('거래 기록 조회 실패:', error)
+        console.error('기록 조회 실패:', error)
       }
     },
     
-    async sellPosition(position) {
+    async sellAll(position) {
       if (!confirm(`${position.name} 전량을 매도하시겠습니까?`)) return
       
       try {
@@ -704,17 +705,17 @@ export default {
       }
     },
     
-    startRealTimeUpdates() {
-      this.updateInterval = setInterval(() => {
+    startAutoUpdate() {
+      this.updateTimer = setInterval(() => {
         this.refreshPositions()
-        this.refreshAccountInfo()
-      }, 30000) // 30초마다 업데이트
+        this.refreshAccount()
+      }, 30000)
     },
     
-    stopRealTimeUpdates() {
-      if (this.updateInterval) {
-        clearInterval(this.updateInterval)
-        this.updateInterval = null
+    stopAutoUpdate() {
+      if (this.updateTimer) {
+        clearInterval(this.updateTimer)
+        this.updateTimer = null
       }
     },
     
@@ -727,7 +728,7 @@ export default {
       return statusMap[this.tradingStatus] || '알 수 없음'
     },
     
-    getTradeStatusText(status) {
+    getTradeStatus(status) {
       const statusMap = {
         pending: '대기',
         executed: '체결',
@@ -742,7 +743,7 @@ export default {
       return amount.toLocaleString('ko-KR')
     },
     
-    formatDateTime(timestamp) {
+    formatTime(timestamp) {
       return new Date(timestamp).toLocaleString('ko-KR', {
         month: 'short',
         day: 'numeric',
@@ -750,364 +751,456 @@ export default {
         minute: '2-digit'
       })
     }
-  },
-  
-  beforeUnmount() {
-    this.stopRealTimeUpdates()
   }
 }
 </script>
 
 <style scoped>
-.trading {
-  padding: var(--spacing-lg) 0;
-  background-color: var(--bg-secondary);
+.trading-page {
   min-height: calc(100vh - 70px);
+  background-color: #f8f9fa;
+  padding: 20px 0;
 }
 
-.trading-header {
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* 페이지 헤더 */
+.page-header {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--spacing-xl);
-  padding: var(--spacing-lg);
-  background-color: var(--white);
-  border-radius: var(--border-radius-lg);
-  box-shadow: var(--shadow-sm);
 }
 
 .page-title {
-  font-size: var(--font-xxl);
-  font-weight: var(--font-bold);
-  color: var(--text-primary);
+  font-size: 24px;
+  font-weight: 600;
+  color: #333;
   margin: 0;
 }
 
-.account-info {
+.account-summary {
   display: flex;
   align-items: center;
-  gap: var(--spacing-lg);
+  gap: 24px;
 }
 
-.account-card, .balance-card {
+.account-item {
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
+  text-align: right;
 }
 
-.account-label, .balance-label {
-  font-size: var(--font-sm);
-  color: var(--text-secondary);
-  margin-bottom: var(--spacing-xs);
+.account-item .label {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 4px;
 }
 
-.account-number, .balance-amount {
-  font-size: var(--font-lg);
-  font-weight: var(--font-medium);
-  color: var(--text-primary);
+.account-item .value {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
 }
 
-.balance-amount {
-  color: var(--primary-color);
+.account-item .balance {
+  color: #1976d2;
 }
 
-.tab-navigation {
+.refresh-btn {
   display: flex;
-  margin-bottom: var(--spacing-xl);
-  background-color: var(--white);
-  border-radius: var(--border-radius-lg);
-  padding: var(--spacing-xs);
-  box-shadow: var(--shadow-sm);
-}
-
-.tab-button {
-  flex: 1;
-  padding: var(--spacing-md) var(--spacing-lg);
-  background: none;
-  border: none;
-  border-radius: var(--border-radius-md);
-  font-weight: var(--font-medium);
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 6px;
   cursor: pointer;
-  transition: all var(--transition-fast);
-  color: var(--text-secondary);
+  font-size: 14px;
+  transition: all 0.2s;
 }
 
-.tab-button.active {
-  background-color: var(--primary-color);
-  color: var(--white);
+.refresh-btn:hover {
+  background: #e0e0e0;
 }
 
-.trading-content {
-  margin-top: var(--spacing-xl);
+/* 탭 메뉴 */
+.tab-menu {
+  display: flex;
+  background: white;
+  border-radius: 12px;
+  padding: 4px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
-.trading-grid {
-  display: grid;
-  gap: var(--spacing-lg);
+.tab-btn {
+  flex: 1;
+  padding: 12px 24px;
+  border: none;
+  background: none;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #666;
 }
 
-.strategy-section, .stocks-section {
-  grid-column: 1 / -1;
+.tab-btn.active {
+  background: #1976d2;
+  color: white;
 }
 
-.control-section {
-  grid-column: 1 / -1;
+/* 섹션 공통 */
+.tab-content section {
+  background: white;
+  border-radius: 12px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  padding: 24px;
 }
 
-.positions-section, .history-section {
-  grid-column: 1 / -1;
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #eee;
 }
 
-.strategy-grid {
+.section-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  margin: 0;
+}
+
+/* 전략 선택 */
+.strategy-cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: var(--spacing-md);
-  margin-bottom: var(--spacing-lg);
+  gap: 16px;
+  margin-bottom: 24px;
 }
 
 .strategy-card {
-  border: 2px solid var(--border-light);
-  border-radius: var(--border-radius-lg);
-  padding: var(--spacing-lg);
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 20px;
   cursor: pointer;
-  transition: all var(--transition-fast);
-  background-color: var(--white);
+  transition: all 0.2s;
+  position: relative;
 }
 
 .strategy-card:hover {
-  border-color: var(--primary-color);
+  border-color: #1976d2;
   transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
 
 .strategy-card.selected {
-  border-color: var(--primary-color);
-  background-color: rgba(25, 118, 210, 0.05);
+  border-color: #1976d2;
+  background: rgba(25, 118, 210, 0.05);
 }
 
 .strategy-icon {
-  font-size: 2rem;
-  margin-bottom: var(--spacing-sm);
+  font-size: 32px;
+  margin-bottom: 12px;
 }
 
 .strategy-name {
-  font-size: var(--font-lg);
-  font-weight: var(--font-medium);
-  margin-bottom: var(--spacing-sm);
-  color: var(--text-primary);
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #333;
 }
 
-.strategy-description {
-  color: var(--text-secondary);
-  margin-bottom: var(--spacing-md);
-  line-height: 1.5;
+.strategy-desc {
+  color: #666;
+  font-size: 14px;
+  line-height: 1.4;
+  margin-bottom: 12px;
 }
 
 .strategy-stats {
   display: flex;
-  gap: var(--spacing-md);
+  gap: 12px;
 }
 
-.stat-item {
-  font-size: var(--font-sm);
-  color: var(--text-secondary);
-  background-color: var(--bg-secondary);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--border-radius-sm);
+.stat {
+  background: #f5f5f5;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #666;
 }
 
-.strategy-details {
-  margin-top: var(--spacing-lg);
-  padding: var(--spacing-lg);
-  background-color: var(--bg-secondary);
-  border-radius: var(--border-radius-md);
+/* 전략 설정 */
+.strategy-config {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 20px;
 }
 
-.strategy-params {
+.strategy-config h3 {
+  margin-bottom: 16px;
+  color: #333;
+}
+
+.config-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: var(--spacing-md);
-  margin-top: var(--spacing-md);
+  gap: 16px;
 }
 
-.param-group {
+.config-item {
   display: flex;
   flex-direction: column;
 }
 
-.param-description {
-  margin-top: var(--spacing-xs);
-  color: var(--text-secondary);
-  font-size: var(--font-xs);
+.config-item label {
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 6px;
+  color: #333;
+}
+
+.config-input {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.config-help {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #666;
+}
+
+/* 종목 섹션 */
+.recommend-btn {
+  padding: 8px 16px;
+  background: #1976d2;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.recommend-btn:hover {
+  background: #1565c0;
+}
+
+.loading-stocks {
+  text-align: center;
+  padding: 40px;
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #1976d2;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 16px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 .stocks-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: var(--spacing-md);
-  margin-bottom: var(--spacing-lg);
+  gap: 16px;
+  margin-bottom: 24px;
 }
 
 .stock-card {
-  border: 2px solid var(--border-light);
-  border-radius: var(--border-radius-lg);
-  padding: var(--spacing-md);
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 16px;
   cursor: pointer;
-  transition: all var(--transition-fast);
-  background-color: var(--white);
+  transition: all 0.2s;
   position: relative;
 }
 
 .stock-card:hover {
-  border-color: var(--primary-color);
+  border-color: #1976d2;
   transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
 
 .stock-card.selected {
-  border-color: var(--success-color);
-  background-color: rgba(76, 175, 80, 0.05);
+  border-color: #4caf50;
+  background: rgba(76, 175, 80, 0.05);
 }
 
-.stock-header {
+.stock-info {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--spacing-sm);
+  margin-bottom: 12px;
 }
 
 .stock-name {
-  font-size: var(--font-md);
-  font-weight: var(--font-medium);
-  color: var(--text-primary);
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
   margin: 0;
 }
 
 .stock-code {
-  font-size: var(--font-sm);
-  color: var(--text-secondary);
-  background-color: var(--bg-secondary);
-  padding: var(--spacing-xs) var(--spacing-sm);
-  border-radius: var(--border-radius-sm);
+  background: #f5f5f5;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #666;
 }
 
 .stock-price {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--spacing-sm);
+  margin-bottom: 12px;
 }
 
 .current-price {
-  font-size: var(--font-lg);
-  font-weight: var(--font-medium);
-  color: var(--text-primary);
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
 }
 
 .price-change {
-  font-size: var(--font-sm);
-  font-weight: var(--font-medium);
+  font-size: 14px;
+  font-weight: 500;
 }
 
-.price-change.positive {
-  color: var(--error-color);
+.price-change.up {
+  color: #f44336;
 }
 
-.price-change.negative {
-  color: var(--primary-color);
+.price-change.down {
+  color: #2196f3;
 }
 
-.stock-reason {
-  margin-bottom: var(--spacing-sm);
-  color: var(--text-secondary);
-  font-size: var(--font-sm);
+.ai-reason {
+  color: #666;
+  font-size: 13px;
   line-height: 1.4;
+  margin-bottom: 12px;
 }
 
-.checkbox-wrapper {
+.stock-checkbox {
   position: absolute;
-  top: var(--spacing-sm);
-  right: var(--spacing-sm);
+  top: 12px;
+  right: 12px;
 }
 
-.checkbox-wrapper input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
-  cursor: pointer;
+.stock-checkbox input {
+  width: 16px;
+  height: 16px;
 }
 
-.custom-stock {
-  margin-top: var(--spacing-lg);
-  padding: var(--spacing-lg);
-  border: 1px solid var(--border-light);
-  border-radius: var(--border-radius-md);
-  background-color: var(--bg-secondary);
+/* 종목 추가 */
+.add-stock {
+  border-top: 1px solid #eee;
+  padding-top: 20px;
+  margin-top: 20px;
 }
 
-.stock-search {
+.add-stock h3 {
+  margin-bottom: 16px;
+  color: #333;
+}
+
+.search-stock {
   display: flex;
-  gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-md);
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
-.stock-search .form-input {
+.search-input {
   flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.search-btn {
+  padding: 10px 20px;
+  background: #1976d2;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
 }
 
 .search-results {
   max-height: 200px;
   overflow-y: auto;
-  border: 1px solid var(--border-light);
-  border-radius: var(--border-radius-sm);
-  background-color: var(--white);
+  border: 1px solid #ddd;
+  border-radius: 6px;
 }
 
-.search-result-item {
+.search-result {
   display: flex;
   justify-content: space-between;
-  padding: var(--spacing-sm) var(--spacing-md);
+  padding: 12px 16px;
   cursor: pointer;
-  border-bottom: 1px solid var(--border-light);
-  transition: background-color var(--transition-fast);
+  border-bottom: 1px solid #eee;
+  transition: background 0.2s;
 }
 
-.search-result-item:hover {
-  background-color: var(--bg-secondary);
+.search-result:hover {
+  background: #f5f5f5;
 }
 
-.search-result-item:last-child {
+.search-result:last-child {
   border-bottom: none;
 }
 
-.control-section .card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
+/* 제어 섹션 */
 .trading-status {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
+  gap: 8px;
 }
 
-.status-indicator {
-  width: 12px;
-  height: 12px;
+.status-dot {
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
 }
 
-.status-indicator.stopped {
-  background-color: var(--gray);
+.status-dot.stopped {
+  background: #9e9e9e;
 }
 
-.status-indicator.running {
-  background-color: var(--success-color);
+.status-dot.running {
+  background: #4caf50;
   animation: pulse 2s infinite;
 }
 
-.status-indicator.paused {
-  background-color: var(--warning-color);
+.status-dot.paused {
+  background: #ff9800;
 }
 
 @keyframes pulse {
@@ -1117,74 +1210,183 @@ export default {
 }
 
 .status-text {
-  font-weight: var(--font-medium);
-  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
 }
 
-.control-settings {
+.control-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: var(--spacing-md);
-  margin-bottom: var(--spacing-xl);
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.control-group label {
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 6px;
+  color: #333;
+}
+
+.control-input, .control-select {
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.control-group small {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #666;
 }
 
 .control-buttons {
   display: flex;
-  gap: var(--spacing-md);
+  gap: 12px;
   justify-content: center;
   flex-wrap: wrap;
 }
 
-.control-buttons .btn {
-  min-width: 140px;
+.control-btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 120px;
+}
+
+.start-btn {
+  background: #4caf50;
+  color: white;
+}
+
+.start-btn:hover:not(:disabled) {
+  background: #45a049;
+}
+
+.stop-btn {
+  background: #f44336;
+  color: white;
+}
+
+.stop-btn:hover:not(:disabled) {
+  background: #d32f2f;
+}
+
+.pause-btn {
+  background: #ff9800;
+  color: white;
+}
+
+.pause-btn:hover:not(:disabled) {
+  background: #f57c00;
+}
+
+.control-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 포지션 섹션 */
+.empty-positions {
+  text-align: center;
+  padding: 40px;
+  color: #666;
 }
 
 .positions-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: var(--spacing-md);
+  gap: 16px;
 }
 
 .position-card {
-  border: 1px solid var(--border-light);
-  border-radius: var(--border-radius-md);
-  padding: var(--spacing-md);
-  background-color: var(--white);
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 16px;
 }
 
 .position-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--spacing-md);
+  margin-bottom: 12px;
+}
+
+.position-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  margin: 0;
+}
+
+.position-code {
+  background: #f5f5f5;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #666;
 }
 
 .position-details {
-  margin-bottom: var(--spacing-md);
+  margin-bottom: 16px;
 }
 
 .detail-row {
   display: flex;
   justify-content: space-between;
-  margin-bottom: var(--spacing-xs);
+  margin-bottom: 6px;
+  font-size: 14px;
 }
 
-.detail-row .label {
-  color: var(--text-secondary);
-  font-size: var(--font-sm);
+.detail-row span:first-child {
+  color: #666;
 }
 
-.detail-row .value {
-  font-weight: var(--font-medium);
-  font-size: var(--font-sm);
+.detail-row span:last-child {
+  font-weight: 500;
+  color: #333;
 }
 
-.detail-row .value.positive {
-  color: var(--error-color);
+.pnl.profit {
+  color: #f44336;
 }
 
-.detail-row .value.negative {
-  color: var(--primary-color);
+.pnl.loss {
+  color: #2196f3;
+}
+
+.sell-btn {
+  width: 100%;
+  padding: 8px 16px;
+  background: #f44336;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.sell-btn:hover {
+  background: #d32f2f;
+}
+
+/* 거래 기록 */
+.period-select {
+  padding: 6px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
 }
 
 .history-table {
@@ -1198,90 +1400,77 @@ export default {
 
 .history-table th,
 .history-table td {
-  padding: var(--spacing-sm) var(--spacing-md);
+  padding: 12px 16px;
   text-align: left;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid #eee;
+  font-size: 14px;
 }
 
 .history-table th {
-  background-color: var(--bg-secondary);
-  font-weight: var(--font-medium);
-  color: var(--text-primary);
+  background: #f8f9fa;
+  font-weight: 600;
+  color: #333;
 }
 
 .trade-type.buy {
-  color: var(--error-color);
-  font-weight: var(--font-medium);
+  color: #f44336;
+  font-weight: 500;
 }
 
 .trade-type.sell {
-  color: var(--primary-color);
-  font-weight: var(--font-medium);
+  color: #2196f3;
+  font-weight: 500;
 }
 
-.status.pending {
-  color: var(--warning-color);
+.trade-status.pending {
+  color: #ff9800;
 }
 
-.status.executed {
-  color: var(--success-color);
+.trade-status.executed {
+  color: #4caf50;
 }
 
-.status.cancelled,
-.status.failed {
-  color: var(--gray);
+.trade-status.cancelled,
+.trade-status.failed {
+  color: #9e9e9e;
 }
 
-.loading-state {
-  text-align: center;
-  padding: var(--spacing-xl);
-}
-
-.loading-state .loading-spinner {
-  margin: 0 auto var(--spacing-md);
-}
-
-.empty-state {
-  text-align: center;
-  padding: var(--spacing-xl);
-  color: var(--text-secondary);
-}
-
+/* 해외투자 준비중 */
 .coming-soon {
   text-align: center;
-  padding: var(--spacing-xxl);
+  padding: 80px 20px;
 }
 
-.coming-soon-icon {
-  font-size: 4rem;
-  margin-bottom: var(--spacing-lg);
+.coming-icon {
+  font-size: 64px;
+  margin-bottom: 24px;
 }
 
 .coming-soon h2 {
-  font-size: var(--font-xl);
-  margin-bottom: var(--spacing-md);
-  color: var(--text-primary);
+  font-size: 24px;
+  margin-bottom: 16px;
+  color: #333;
 }
 
 .coming-soon p {
-  font-size: var(--font-md);
-  color: var(--text-secondary);
+  font-size: 16px;
+  color: #666;
   line-height: 1.6;
 }
 
-/* 모바일 반응형 */
+/* 반응형 */
 @media (max-width: 768px) {
-  .trading-header {
+  .page-header {
     flex-direction: column;
-    gap: var(--spacing-md);
+    gap: 16px;
     align-items: stretch;
   }
   
-  .account-info {
+  .account-summary {
     justify-content: space-between;
   }
   
-  .strategy-grid {
+  .strategy-cards {
     grid-template-columns: 1fr;
   }
   
@@ -1289,7 +1478,7 @@ export default {
     grid-template-columns: 1fr;
   }
   
-  .control-settings {
+  .control-grid {
     grid-template-columns: 1fr;
   }
   
@@ -1301,12 +1490,12 @@ export default {
     grid-template-columns: 1fr;
   }
   
-  .history-table {
-    font-size: var(--font-sm);
+  .search-stock {
+    flex-direction: column;
   }
   
-  .stock-search {
-    flex-direction: column;
+  .container {
+    padding: 0 16px;
   }
 }
 </style>

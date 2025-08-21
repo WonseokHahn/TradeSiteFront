@@ -5,6 +5,7 @@ import store from '../store'
 import Home from '../views/Home.vue'
 import Login from '../views/Login.vue'
 import AuthCallback from '../views/AuthCallback.vue'
+import Trading from '../views/Trading.vue'
 import NotFound from '../views/NotFound.vue'
 
 const routes = [
@@ -24,6 +25,15 @@ const routes = [
     meta: { 
       title: '로그인 - 주식 자동매매 사이트',
       requiresAuth: false 
+    }
+  },
+  {
+    path: '/trading',
+    name: 'Trading',
+    component: Trading,
+    meta: { 
+      title: 'AI 자동매매 - 주식 자동매매 사이트',
+      requiresAuth: true 
     }
   },
   {

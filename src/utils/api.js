@@ -1,9 +1,9 @@
 import axios from 'axios'
 
 // API 베이스 URL 설정
-const API_BASE_URL = process.env.VUE_APP_API_URL || 'https://tradesiteback.onrender.com/api'
+const API_BASE_URL = process.env.VUE_APP_API_URL || '/api'
 
-console.log('🌐 API Base URL:', API_BASE_URL)
+// console.log('🌐 API Base URL:', API_BASE_URL)
 
 // Axios 인스턴스 생성
 const apiClient = axios.create({
@@ -18,17 +18,11 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token')
-    
-    console.log('🔍 API 요청 시작:', config.method?.toUpperCase(), config.url)
-    console.log('🔑 토큰 상태:', token ? `토큰 있음 (${token.substring(0, 20)}...)` : '토큰 없음')
-    
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`
-      console.log('✅ Authorization 헤더 추가됨')
-    } else {
-      console.log('⚠️ 토큰이 없어서 Authorization 헤더 추가 안됨')
     }
     
+    console.log(`🔍 API 요청: ${config.method?.toUpperCase()} ${config.url}`)
     return config
   },
   (error) => {
@@ -40,13 +34,11 @@ apiClient.interceptors.request.use(
 // 응답 인터셉터 (에러 처리)
 apiClient.interceptors.response.use(
   (response) => {
-    console.log(`✅ API 응답 성공: ${response.status} ${response.config.url}`)
+    console.log(`✅ API 응답: ${response.status} ${response.config.url}`)
     return response
   },
   (error) => {
     console.error('❌ API 응답 에러:', error)
-    console.error('❌ 응답 상태:', error.response?.status)
-    console.error('❌ 응답 데이터:', error.response?.data)
     
     if (error.response?.status === 401) {
       // 토큰 만료 시 로그아웃
